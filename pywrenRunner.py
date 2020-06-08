@@ -18,7 +18,7 @@ def traj_pred_v2_wrapper(oid):
 
     print("v_id: " + str(oid) + " x: " + str(fx) + " y: " + str(fy) + " t: " + str(ft))
 
-    dm.storeResult(oid, fx, fy)
+    dm.storeResult(oid, fx, fy, ft)
     return fx
 
 def run(params=[]):

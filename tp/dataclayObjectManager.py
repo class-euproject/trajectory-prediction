@@ -30,10 +30,11 @@ class DataclayObjectManager:
     def getVehicleByID(self, oid):
         return self.eventsDC.eventsById.get(oid)
 
-    def storeResult(self, oid, fx, fy):
+    def storeResult(self, oid, fx, fy, ft):
         px = [str(x) for x in fx]
         py = [str(y) for y in fy]
-        pp = ['(' + x + "," + y +')' for x in px for y in py]
+        pt = [str(t) for t in ft]
+        pp = ['(' + x + "," + y + "," + t +')' for x in px for y in py for t in pt]
         pp = ', '.join(pp)
 
         self.eventsDC.add_prediction(int(oid), pp)

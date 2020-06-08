@@ -36,13 +36,15 @@ QUAD_REG_OFFSET = 5 # how many points to predict
 QUAD_REG_MIN = 5 # min amount of trajectory points to start predicting
 PRED_RANGE_MIL = 200 # range for predicted points in milliseconds 
 
+vehicles = {} # store vehicles as many could be processed at the same time
+
 
 
 class Vehicle:
 
-    _dqx = None #deque() Currently there no need to instantiate queue as it is passed in constructor
-    _dqy = None #deque()
-    _dqt = None #deque()
+    _dqx = deque()
+    _dqy = deque()
+    _dqt = deque()
     
     def __init__(self, dqx, dqy, dqt):
         
@@ -61,7 +63,7 @@ def traj_pred_v2(v):
     # assuming not constant time stamps here, is necessary to
     # transform timestamps to small integers starting at 0 (each unit is 1 second)
     # to be used correctly in next formulas
-    vct_t = list(v._dqt)
+    vct_t = list(v._dqt)    
     transformed_timestamps = []
     initial_timestamp = math.floor(vct_t[0]/1000)
     
@@ -108,7 +110,6 @@ def traj_pred_v2(v):
     
     # now the output is 3 arrays for timestamps, x and y positions
     return fx, fy, ft
-
 
 
 def quad_reg(vx, vy, z):
@@ -168,3 +169,93 @@ def quad_reg(vx, vy, z):
         fy.append(a * fx**2 + b * fx + c)
         
     return fy
+
+
+
+
+
+
+# load/store functions will work with the class "Vehicle"
+
+# load an object from minio using the v_id
+def load_object_minio(v_id):
+    vehicle = function_from_minio(v_id) # TODO: minio function
+    return vehicle
+
+# store a Vehicle object in minio
+def store_object_minio(v):
+    function_to_minio(v) # TODO: minio function
+    
+
+
+
+# add data (x,y,t) to a vehicle object
+# using using the variable QUAD_REG_LEN as threshold
+def add_data_to_object(v, x, y, t, threshold):
+    dqx = v._dqx
+    dqy = v._dqy
+    dqt = v._dqt
+
+    dqx.append(x)
+    dqy.append(y)
+    dqt.append(t)
+    
+    # remove data using the variable QUAD_REG_LEN
+    if len(dqx) > threshold:
+        dqx.popleft()
+        dqy.popleft()
+        dqt.popleft()
+
+    v = Vehicle(dqx, dqy, dqt)
+    
+    return v
+
+
+
+# do something (store, append, ...) with the vehicle object and its predictions
+def something_with_predictions(v, fx, fy, ft):
+    # store only the latest predictions in minio??
+
+
+# calculate the predictions for a vehicle object using QUAD_REG_MIN as threshold
+def object_prediction(v, threshold):
+    # predict if has a minimum amount of data
+    if len(v._dqx) > threshold: 
+        # calculate trajectory by v2 method
+        fx, fy, ft = traj_pred_v2(v)
+        print("v_id: " + str(v_id) + " x: " + str(fx) + " y: " + str(fy) + " t: " + str(ft))
+
+        something_with_predictions(v, fx, fy, ft)
+    
+
+
+
+# manage the event coming from dataclay and return the data to be processed
+def get_data_from_event():
+    # TODO
+    # return object id, coordinates, and timestamp
+    return v_id,x,y,t
+
+
+
+    
+# main using minio functions
+def main():
+    
+    v_id,x,y,t = get_data_from_event() # TODO
+    
+    v = load_object_minio(v_id)
+    
+    v = add_data_to_object(v, x, y, t, QUAD_REG_LEN)
+    
+    store_object_minio(v)
+    
+    object_prediction(v, QUAD_REG_MIN)
+
+
+
+if __name__ == '__main__':
+    
+    main()
+
+
