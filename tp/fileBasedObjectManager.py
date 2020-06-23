@@ -66,10 +66,10 @@ class FileBasedObjectManager:
         return self.vehicles[v_id]
 
     def getUpdatedObject(self, oid):
-        return self.getVehicleByID(oid)
+        return oid, self.getVehicleByID(oid)
 
-    def storeResult(self, oid, result):
-        self.results[oid] = result
+    def storeResult(self, oid, fx, fy, ft):
+        self.results[oid] = (fx, fy, ft)
 
     def getResult(self, oid):
         if oid in self.results:
