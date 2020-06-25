@@ -38,8 +38,11 @@ def run(params=[]):
     pw = pywren.function_executor()
 
     timeConsumed("pw_executor")   #TODO: to be removed. needed for debugging
+    alias = "GEIC"
+    if 'ALIAS' in params:  #TODO: to be removed. needed for debugging
+        alias = params['ALIAS']
 
-    dm = DataclayObjectManager(alias="GEIC")
+    dm = DataclayObjectManager(alias=alias)
 
 #    timeConsumed("DataclayVehicleManager")   #TODO: to be removed. needed for debugging
 
@@ -47,7 +50,7 @@ def run(params=[]):
 #    objectsIds = eventsS.get_objects_refs()
 
 #    print("params: %s" % params)
-    limit = None   #TODO: to be removed. needed for debugging
+    limit = 20   #TODO: to be removed. needed for debugging
     if 'LIMIT' in params:  #TODO: to be removed. needed for debugging
         limit = int(params['LIMIT'])  #TODO: to be removed. needed for debugging
 #        objectsIds = objectsIds[:limit]
@@ -71,4 +74,4 @@ def run(params=[]):
     return {"finished": "true"}
 
 if __name__ == '__main__':
-    run(params={"LIMIT": 3})
+    run(params={"LIMIT": 20})
