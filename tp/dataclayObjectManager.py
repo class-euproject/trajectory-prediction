@@ -31,6 +31,7 @@ class DataclayObjectManager:
         return obj.trajectory_px, obj.trajectory_py, obj.trajectory_pt
 
     def getUpdatedObject(self, oid):
+        print("-------------aaaaaaaaaaaaaaaaa--------------")
         obj = Object.get_by_alias(oid)
         dqx,dqy,_dqt = obj.get_events_history()
         dqt = deque([int(numeric_string) for numeric_string in _dqt])

@@ -19,8 +19,17 @@ def _printResults(ids, dm):
     for oid in ids:
         print('Object Id= %s obj.trajectory_px = %s' % (oid, dm.getResult(oid)))
 
-def traj_pred_v2_wrapper(oid):
-    dm = DataclayObjectManager(alias="GEIC")
+def traj_pred_v2_wrapper(alias_oid):
+    print("===================in traj_pred_v2_wrapper ===============")
+    print("with input: " + alias_oid)
+    
+    alias = alias_oid.split(':', 1)[0]
+    oid = alias_oid.split(':', 1)[1]
+
+    print("with ALIAS: " + alias + ", OID: " + oid)
+
+    dm = DataclayObjectManager(alias=alias)
+
     obj, vehicle = dm.getUpdatedObject(oid)
     
     # calculate trajectory by v2
@@ -33,14 +42,21 @@ def traj_pred_v2_wrapper(oid):
 
 def run(params=[]):
 
+    print("params: %s" % params)
+
     timeConsumed("start")   #TODO: to be removed. needed for debugging
 
     pw = pywren.function_executor()
 
     timeConsumed("pw_executor")   #TODO: to be removed. needed for debugging
-    alias = "GEIC"
-    if 'ALIAS' in params:  #TODO: to be removed. needed for debugging
-        alias = params['ALIAS']
+    global alias
+    if 'ALIAS' not in params:  #TODO: to be removed. needed for debugging
+        print("Params %s missing ALIAS parameter" % params)
+        exit()
+
+    alias = params['ALIAS']
+
+    print("ALIAS: %s" % alias)
 
     dm = DataclayObjectManager(alias=alias)
 
@@ -57,10 +73,15 @@ def run(params=[]):
 
     ids = dm.getVehiclesIDs(limit=limit)   #TODO: to be removed. needed for debugging
 
+    idstuples = []
+   
+    for oid in ids:
+        idstuples.append(alias + ':' + oid)
+
     timeConsumed("dm.getVehiclesIDs")
 
 #    import pdb;pdb.set_trace()
-    pw.map(traj_pred_v2_wrapper, ids, extra_env = {'PRE_RUN': 'dataclay.api.init'})
+    pw.map(traj_pred_v2_wrapper, idstuples, extra_env = {'PRE_RUN': 'dataclay.api.init'})
 
     timeConsumed("pw.map")
 
@@ -74,4 +95,4 @@ def run(params=[]):
     return {"finished": "true"}
 
 if __name__ == '__main__':
-    run(params={"LIMIT": 20})
+    run(params={"LIMIT": 20, "ALIAS" : "events_0"})

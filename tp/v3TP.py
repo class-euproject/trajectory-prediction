@@ -34,7 +34,7 @@ import math
 QUAD_REG_LEN = 20 # max amount of trajectory points to manage
 QUAD_REG_OFFSET = 5 # how many points to predict
 QUAD_REG_MIN = 5 # min amount of trajectory points to start predicting
-PRED_RANGE_MIL = 200 # range for predicted points in milliseconds 
+PRED_RANGE_MIL = 1000 # range for predicted points in milliseconds 
 
 
 
