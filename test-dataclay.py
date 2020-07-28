@@ -14,7 +14,7 @@ if __name__ == '__main__':
         if len(obj._dqx) > QUAD_REG_MIN:
             # calculate trajectory by v2
             fx, fy, ft = traj_pred_v2(obj)
-            dm.storeResult(oid, fx, fy, ft)
+            dm.storeResult(obj, fx, fy, ft)
 
     for v_id in oids:
         res = dm.getResult(v_id)
