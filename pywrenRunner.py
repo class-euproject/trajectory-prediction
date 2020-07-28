@@ -31,6 +31,10 @@ def traj_pred_v2_wrapper(alias_oid):
     dm = DataclayObjectManager(alias=alias)
 
     obj, vehicle = dm.getUpdatedObject(oid)
+    if not obj:
+        return
+
+    print("vehicle._dqx: " + str(vehicle._dqx) + ", vehicle._dqy: " + str(vehicle._dqy) + ", vehicle._dqt: " + str(vehicle._dqt))
     
     # calculate trajectory by v2
     fx, fy, ft = traj_pred_v2(vehicle)

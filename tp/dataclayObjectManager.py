@@ -4,7 +4,7 @@ from collections import deque
 init()
 
 from CityNS.classes import *
-from tp.v3TP import QUAD_REG_LEN, Vehicle
+from tp.v3TP import QUAD_REG_LEN, QUAD_REG_MIN, Vehicle
 
 class DataclayObjectManager:
     eventsDC = None
@@ -31,9 +31,16 @@ class DataclayObjectManager:
         return obj.trajectory_px, obj.trajectory_py, obj.trajectory_pt
 
     def getUpdatedObject(self, oid):
-        print("-------------aaaaaaaaaaaaaaaaa--------------")
+        print("-------------aaaaaaaaaaaaaaaaa1--------------")
         obj = Object.get_by_alias(oid)
         dqx,dqy,_dqt = obj.get_events_history()
+
+        print("dqx: " + str(dqx) + ", dqy: " + str(dqy) + ", _dqt: " + str(_dqt))
+
+        if len(dqx) < QUAD_REG_MIN:
+            print("Object: " + str(oid) + " data amount " + str(len(dqx)) + " not sufficient for Vehicle object initialization")
+            return None, None
+
         dqt = deque([int(numeric_string) for numeric_string in _dqt])
 
         return obj, Vehicle(dqx, dqy, dqt)

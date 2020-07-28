@@ -7,6 +7,8 @@ if __name__ == '__main__':
 
     for oid in oids:
         obj = dm.getUpdatedObject(oid)
+        if not obj:
+            continue
 
         # predict if has a minimum amount of data
         if len(obj._dqx) > QUAD_REG_MIN:
