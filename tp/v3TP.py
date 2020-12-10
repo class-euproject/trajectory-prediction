@@ -35,7 +35,7 @@ QUAD_REG_LEN = 20 # max amount of trajectory points to manage
 QUAD_REG_OFFSET = 5 # how many points to predict
 QUAD_REG_MIN = 5 # min amount of trajectory points to start predicting
 PRED_RANGE_MIL = 1000 # range for predicted points in milliseconds 
-
+PRECISION = 9
 
 
 class Vehicle:
@@ -45,14 +45,13 @@ class Vehicle:
     _dqt = None #deque()
     
     def __init__(self, dqx, dqy, dqt):
-        
         self._dqx = dqx
         self._dqy = dqy
         self._dqt = dqt
         
 
-#def traj_pred(dqx, dqy, dqt):
-def traj_pred_v2(v):
+def traj_pred_v3(dqx, dqy, dqt):
+#def traj_pred_v2(v):
     
     #
     # 1. find fx
@@ -61,7 +60,7 @@ def traj_pred_v2(v):
     # assuming not constant time stamps here, is necessary to
     # transform timestamps to small integers starting at 0 (each unit is 1 second)
     # to be used correctly in next formulas
-    vct_t = list(v._dqt)
+    vct_t = list(dqt)
     transformed_timestamps = []
     initial_timestamp = math.floor(vct_t[0]/1000)
     
@@ -73,7 +72,7 @@ def traj_pred_v2(v):
     vct_x = transformed_timestamps
     
     # the y vector is the x positions for this calculation of fx
-    vct_y = list(v._dqx)
+    vct_y = list(dqx)
 
     # quad_reg finds the quadratic equation using least-squares 
     # that fits the given values of x: timestamps, y: values of x
@@ -100,7 +99,7 @@ def traj_pred_v2(v):
     #   
 
     # the y vector is the y positions for this calculation of fx
-    vct_y = list(v._dqy)
+    vct_y = list(dqy)
     # vct_x (timestamps) and vct_xp (predicted timestamps) are the same
     
     # calculate y'

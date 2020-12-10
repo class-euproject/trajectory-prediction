@@ -4,43 +4,61 @@ from collections import deque
 init()
 
 from CityNS.classes import *
-from tp.v3TP import QUAD_REG_LEN, QUAD_REG_MIN, Vehicle
+from tp.v3TP import QUAD_REG_LEN, QUAD_REG_MIN, Vehicle, PRECISION
+from geolib import geohash
+
+import multiprocessing
+from multiprocessing.pool import ThreadPool as Pool
+
+
 
 class DataclayObjectManager:
-    eventsDC = None
+    KB = None
     
-    def __init__(self, alias):
-        self.eventsDC = EventsSnapshot.get_by_alias(alias)
+    def __init__(self, alias="DKB"):
+        self.KB = DKB.get_by_alias(alias)
 
-    def getVehiclesIDs(self, limit=None):
-        objectsIds = self.eventsDC.get_objects_refs()
+    def _convert_object_to_tuple(self, obj):
+        dqx,dqy,_dqt = obj.get_events_history()
+        if len(dqx) >= QUAD_REG_MIN:
+            dqt = deque([int(numeric_string) for numeric_string in _dqt])
+            return (str(obj.id_object), dqx, dqy, dqt)
 
-        if limit:  #TODO: to be removed. needed for debugging
-            return objectsIds[:limit]
+    def getAllObjectsTuples(self, limit=None):
+        objects = self.KB.get_objects()
+        res = []
+        for obj in objects:
+            dqx,dqy,_dqt = obj.get_events_history()
+            if len(dqx) >= QUAD_REG_MIN:
+                dqt = deque([int(numeric_string) for numeric_string in _dqt])
+                res.append((str(obj.id_object), dqx, dqy, dqt))
+                if len(res) == limit:
+                    break;
+        return res
 
-        return objectsIds
+    def getAllObjectsTuplesAsync(self, limit=None):
+        objects = self.KB.get_objects()
+        pool = Pool(8)
+        return pool.map(self._convert_object_to_tuple, objects[:limit])
 
-    def getVehicleByID(self, oid):
+    def getObject(self, oid):
         return Object.get_by_alias(oid)
 
     def storeResult(self, obj, fx, fy, ft):
         obj.add_prediction(fx,fy,ft)
 
     def getResult(self, oid):
-        obj = Object.get_by_alias(oid)
+        obj = self.getObject(oid)
         return obj.trajectory_px, obj.trajectory_py, obj.trajectory_pt
 
     def getUpdatedObject(self, oid):
-        print("-------------aaaaaaaaaaaaaaaaa1--------------")
         obj = Object.get_by_alias(oid)
         dqx,dqy,_dqt = obj.get_events_history()
 
-        print("dqx: " + str(dqx) + ", dqy: " + str(dqy) + ", _dqt: " + str(_dqt))
-
         if len(dqx) < QUAD_REG_MIN:
             print("Object: " + str(oid) + " data amount " + str(len(dqx)) + " not sufficient for Vehicle object initialization")
-            return None, None
+            return None
 
         dqt = deque([int(numeric_string) for numeric_string in _dqt])
 
-        return obj, Vehicle(dqx, dqy, dqt)
+        return Vehicle(dqx, dqy, dqt)
