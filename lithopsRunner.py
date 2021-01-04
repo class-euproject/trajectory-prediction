@@ -23,7 +23,7 @@ def traj_pred_v2_wrapper(objectTuple):
     print(" with input: " + str(objectTuple))
     
     # calculate trajectory by v2
-    fx, fy, ft = traj_pred_v3(objectTuple[1], objectTuple[2], objectTuple[3])
+    fx, fy, ft = traj_pred_v3(objectTuple[5][0], objectTuple[5][1], objectTuple[5][2])
 
     print("v_id: " + str(objectTuple[0]) + " x: " + str(fx) + " y: " + str(fy) + " t: " + str(ft))
 
@@ -57,18 +57,18 @@ def run(params=[]):
     dm = DataclayObjectManager(alias=alias)
     timeConsumed("DataclayObjectManager")
 
-#    import pdb;pdb.set_trace()
-    allObjectsTuples = dm.getAllObjectsTuples(limit=limit)   #TODO: to be removed. needed for debugging
+    allObjectsTuples = dm.getAllObjects()[:limit]
+    timeConsumed("dm.getAllObjects")
 
-    timeConsumed("dm.getVehiclesIDs")
+    if allObjectsTuples:
 
-    fexec.map(traj_pred_v2_wrapper, allObjectsTuples, extra_env = {'__LITHOPS_LOCAL_EXECUTION': True, 'PRE_RUN': 'dataclay.api.init'})
+        fexec.map(traj_pred_v2_wrapper, allObjectsTuples, extra_env = {'__LITHOPS_LOCAL_EXECUTION': True, 'PRE_RUN': 'dataclay.api.init'})
 
-    timeConsumed("fexec.map")
+        timeConsumed("fexec.map")
 
-    fexec.wait(download_results=False, WAIT_DUR_SEC=0.015)
+        fexec.wait(download_results=False, WAIT_DUR_SEC=0.015)
 
-    timeConsumed("pw.get_result")
+        timeConsumed("pw.get_result")
     
 #    _printResults(allObjectsTuples, dm)
     timeConsumed("printResults")

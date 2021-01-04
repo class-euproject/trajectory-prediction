@@ -10,39 +10,30 @@ from geolib import geohash
 import multiprocessing
 from multiprocessing.pool import ThreadPool as Pool
 
+from dataclay import getRuntime
+from dataclay.api import get_backend_id_by_name
 
 
 class DataclayObjectManager:
     KB = None
     
     def __init__(self, alias="DKB"):
-        self.KB = DKB.get_by_alias(alias)
+        self.backend_id = get_backend_id_by_name("DS1")
+        try:
+            self.KB = DKB.get_by_alias(alias)
+        except Exception:
+            self.KB = DKB()
+            self.KB.cloud_backend_id = backend_id
+            self.KB.make_persistent(alias="DKB")
 
-    def _convert_object_to_tuple(self, obj):
-        dqx,dqy,_dqt = obj.get_events_history()
-        if len(dqx) >= QUAD_REG_MIN:
-            dqt = deque([int(numeric_string) for numeric_string in _dqt])
-            return (str(obj.id_object), dqx, dqy, dqt)
-
-    def getAllObjectsTuples(self, limit=None):
-        objects = self.KB.get_objects()
-        res = []
-        for obj in objects:
-            dqx,dqy,_dqt = obj.get_events_history()
-            if len(dqx) >= QUAD_REG_MIN:
-                dqt = deque([int(numeric_string) for numeric_string in _dqt])
-                res.append((str(obj.id_object), dqx, dqy, dqt))
-                if len(res) == limit:
-                    break;
-        return res
-
-    def getAllObjectsTuplesAsync(self, limit=None):
-        objects = self.KB.get_objects()
-        pool = Pool(8)
-        return pool.map(self._convert_object_to_tuple, objects[:limit])
-
+    def getAllObjects(self):
+        return self.KB.get_objects()
+    
     def getObject(self, oid):
-        return Object.get_by_alias(oid)
+        obj_id, class_id = oid.split(":")
+        obj_id = uuid.UUID(obj_id)
+        class_id = uuid.UUID(class_id)
+        return getRuntime().get_object_by_id(obj_id, hint=self.backend_id, class_id=class_id)
 
     def storeResult(self, obj, fx, fy, ft):
         obj.add_prediction(fx,fy,ft)
@@ -50,15 +41,3 @@ class DataclayObjectManager:
     def getResult(self, oid):
         obj = self.getObject(oid)
         return obj.trajectory_px, obj.trajectory_py, obj.trajectory_pt
-
-    def getUpdatedObject(self, oid):
-        obj = Object.get_by_alias(oid)
-        dqx,dqy,_dqt = obj.get_events_history()
-
-        if len(dqx) < QUAD_REG_MIN:
-            print("Object: " + str(oid) + " data amount " + str(len(dqx)) + " not sufficient for Vehicle object initialization")
-            return None
-
-        dqt = deque([int(numeric_string) for numeric_string in _dqt])
-
-        return Vehicle(dqx, dqy, dqt)
