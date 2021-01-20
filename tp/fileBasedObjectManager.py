@@ -8,18 +8,8 @@ class FileBasedObjectManager:
     results = {}
 
     def __init__(self, path='.'):
-        # read BSC test data
-        files = []
-        for i in range(50,60): # last test files are in a wrong order
-            infile = path + "/"+str(i)+".txt"
-            if os.path.exists(infile):
-                files.append(path + "/"+str(i)+".txt")
-        for i in range(0,50):
-            infile = path + "/"+str(i)+".txt"
-            if os.path.exists(infile):
-                files.append(path + "/"+str(i)+".txt")
-
-        for infile in files:
+            # read workflow test data
+            infile = path + "/workflow.log"
 
             content = str()
             with open(infile) as f:
@@ -29,7 +19,7 @@ class FileBasedObjectManager:
 
                 fields = line.split()
 
-                v_id = fields[7]
+                v_id = fields[9]
 
                 dqx = deque()
                 dqy = deque()
@@ -41,13 +31,13 @@ class FileBasedObjectManager:
                     dqt = v._dqt
 
 
-                traj_x = float(fields[3])
+                traj_x = float(fields[4])
                 dqx.append(traj_x)
 
-                traj_y = float(fields[4])
+                traj_y = float(fields[5])
                 dqy.append(traj_y)
 
-                t = int(fields[1])
+                t = int(fields[2])
                 dqt.append(t)
 
 

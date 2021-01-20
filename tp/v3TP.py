@@ -142,18 +142,18 @@ def quad_reg(vx, vy, z):
     b = x_prime[1]
     c = x_prime[2]
     
-    SSE = 0.0
-    SST = 0.0
+    #SSE = 0.0
+    #SST = 0.0
     
-    y_ave = np.average(vy)
+    #y_ave = np.average(vy)
     
-    i = 0
-    while i < len(vx):
-        SST += (vy[i] - y_ave)**2
-        SSE += (vy[i] - a*vx[i]**2 - b*vx[i] - c)**2
-        i += 1
+    #i = 0
+    #while i < len(vx):
+    #    SST += (vy[i] - y_ave)**2
+    #    SSE += (vy[i] - a*vx[i]**2 - b*vx[i] - c)**2
+    #    i += 1
 
-    R2 = 1 - SSE/SST
+    #R2 = 1 - SSE/SST
     
     #print("SSE = ", SSE)
     #print("SST = ", SST)
