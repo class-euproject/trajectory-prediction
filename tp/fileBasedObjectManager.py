@@ -7,6 +7,7 @@ class FileBasedObjectManager:
     results = {}
     output_path = ""
     file_content = ""
+    raw_output = ""
 
     def __init__(self, path='.'):
 
@@ -52,8 +53,13 @@ class FileBasedObjectManager:
     def getResult(self):
         return self.results
 
-    def createResultsFile(self, res):
+    def storeRawResult(self, raw_out):
+        self.raw_output = self.raw_output + raw_out + "\n"
+        
+    def createResultsFile(self):
         with open(self.output_path + "/results.txt", 'w') as outfile:
-            json.dump(res, outfile)
+            json.dump(self.results, outfile)
+        with open(self.output_path + "/raw_results.txt", "w") as raw_file:
+            raw_file.write(self.raw_output)
         
         

@@ -47,13 +47,16 @@ def main():
             # calculate trajectory by v3
             fx, fy, ft = traj_pred_v3(dqx, dqy, dqt)
             dm.storeResult(frame, v_id, fx, fy, ft)
+            raw_out = "frame: " + str(frame) + " v_id: " + str(v_id) + " x: " + str(fx) + " y: " + str(fy) + " t: " + str(ft)
+            dm.storeRawResult(raw_out)
+            print(raw_out)
 
     # get the final results
-    res = dm.getResult()
-    print(res)
+    #res = dm.getResult()
+    #print(res)
 
     # store in a local file
-    dm.createResultsFile(res)
+    dm.createResultsFile()
 
 if __name__ == '__main__':
     main()
