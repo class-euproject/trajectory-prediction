@@ -1,67 +1,59 @@
-from collections import deque
 import os
-from tp.v3TP import QUAD_REG_LEN, Vehicle
+import json
 
 class FileBasedObjectManager:
 
     vehicles = {}
     results = {}
+    output_path = ""
+    file_content = ""
 
     def __init__(self, path='.'):
-            # read workflow test data
-            infile = path + "/workflow.log"
 
-            content = str()
-            with open(infile) as f:
-                content = f.read().splitlines()
+        self.output_path = path
 
-            for line in content:
+        # read workflow test data
+        infile = path + "/workflow.log"
 
-                fields = line.split()
+        content = str()
+        with open(infile) as f:
+            content = f.read().splitlines()
+            self.file_content = content
 
-                v_id = fields[9]
-
-                dqx = deque()
-                dqy = deque()
-                dqt = deque()
-                if v_id in self.vehicles.keys():
-                    v = self.vehicles[v_id]
-                    dqx = v._dqx
-                    dqy = v._dqy
-                    dqt = v._dqt
-
-
-                traj_x = float(fields[4])
-                dqx.append(traj_x)
-
-                traj_y = float(fields[5])
-                dqy.append(traj_y)
-
-                t = int(fields[2])
-                dqt.append(t)
-
-
-                if len(dqx) > QUAD_REG_LEN:
-                    dqx.popleft()
-                    dqy.popleft()
-                    dqt.popleft()
-
-                v = Vehicle(dqx, dqy, dqt)
-                self.vehicles[v_id] = v
-
+    def getFileContent(self):
+        return self.file_content
+    
     def getVehiclesIDs(self):
         return self.vehicles.keys()
 
     def getVehicleByID(self, v_id):
         return self.vehicles[v_id]
+    
+    def storeVehicle(self, v_id, v):
+        self.vehicles[v_id] = v
 
     def getUpdatedObject(self, oid):
         return oid, self.getVehicleByID(oid)
 
-    def storeResult(self, oid, fx, fy, ft):
-        self.results[oid] = (fx, fy, ft)
+    def storeResult(self, frame, v_id, fx, fy, ft):
+        local_result = {}
+        local_result["v_id"] = v_id
+        local_result["x"] = fx
+        local_result["y"] = fy
+        local_result["t"] = ft
+                
+        if frame in self.results.keys():
+            a = self.results[frame]
+            a.append(local_result)
+            self.results[frame] = a
+        else:
+            self.results[frame] = [local_result] 
 
-    def getResult(self, oid):
-        if oid in self.results:
-            return self.results[oid]
-        return None
+    def getResult(self):
+        return self.results
+
+    def createResultsFile(self, res):
+        with open(self.output_path + "/results.txt", 'w') as outfile:
+            json.dump(res, outfile)
+        
+        
