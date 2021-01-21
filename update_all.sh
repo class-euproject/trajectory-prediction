@@ -5,7 +5,9 @@ RUNTIME_NAME=kpavel/lithops_runtime:13.0
 echo -n Password: 
 read -s password
 echo
-# Run Command
+
+wsk -i rule delete /guest/cdtimerrule
+wsk -i rule delete /guest/tp-rule
 
 echo -n "Updating stubs on 192.168.7.32"
 /usr/bin/expect <<EOD
@@ -16,6 +18,8 @@ send -- "$password\r"
 send -- "\r"
 expect eof
 EOD
+
+sleep 5
 
 echo -n "Updating stubs from 192.168.7.32 for trajectory prediction"
 /usr/bin/expect <<EOD
@@ -50,9 +54,12 @@ docker ps -a | grep kpavel_lithops|awk '{print $1 }'| xargs -I {} docker rm -f {
 echo -n "Update trajectory prediction OW action"
 cd /m/home/pkravche/trajectory-prediction
 zip -r classAction.zip __main__.py .lithops_config cfgfiles/ stubs/ lithopsRunner.py tp
-wsk -i action update tpAction --docker $RUNTIME_NAME --timeout 300000 classAction.zip
+wsk -i action update tpAction --docker $RUNTIME_NAME --timeout 300000 -p ALIAS DKB -p CHUNK_SIZE 100 classAction.zip
 
 echo -n "Update collision detection OW action"
 cd /m/home/pkravche/collision-detection
-zip -r classAction.zip __main__.py .lithops_config cfgfiles/ stubs/ lithopsRunner.py cd
-wsk -i action update cdAction --docker $RUNTIME_NAME --timeout 300000 classAction.zip
+zip -r classAction.zip __main__.py .lithops_config cfgfiles/ stubs/ cdLithopsRunner.py cd
+wsk -i action update cdAction --docker $RUNTIME_NAME --timeout 300000  -p ALIAS DKB -p CHUNK_SIZE 100 classAction.zip
+
+wsk -i rule create cdtimerrule cdtimer /guest/cdAction
+wsk -i rule create tp-rule tp-trigger tpAction

@@ -27,7 +27,14 @@ class DataclayObjectManager:
             self.KB.make_persistent(alias="DKB")
 
     def getAllObjects(self):
-        return self.KB.get_objects()
+        allObjects = self.KB.get_objects()
+        res = []
+        for obj in allObjects:
+            _obj = self.getObject(obj[0])
+            self.storeResult(_obj, [], [], [])
+            if len(obj[5][0]) >= QUAD_REG_MIN:
+                res.append(obj)
+        return res
     
     def getObject(self, oid):
         obj_id, class_id = oid.split(":")
