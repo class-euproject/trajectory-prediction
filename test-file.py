@@ -43,7 +43,7 @@ def main():
         dm.storeVehicle(v_id, v)
 
         # predict if has a minimum amount of data
-        if len(dqx) > QUAD_REG_MIN:
+        if len(dqx) >= QUAD_REG_MIN:
             # calculate trajectory by v3
             fx, fy, ft = traj_pred_v3(dqx, dqy, dqt)
             dm.storeResult(frame, v_id, fx, fy, ft)
