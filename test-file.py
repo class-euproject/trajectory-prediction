@@ -49,7 +49,10 @@ def main():
             fx, fy, ft = traj_pred_v3(dqx, dqy, dqt)
             dm.storeResult(frame, v_id, fx, fy, ft)
             #raw_out = "frame: " + str(frame) + " v_id: " + str(v_id) + " x: " + str(fx) + " y: " + str(fy) + " t: " + str(ft)
-            raw_out = str(frame)+" "+str(ttamp)+" "+str(v_id)+" "+str(fx)+" "+str(fy)+" "+str(ft)
+            fx_str = ','.join(str(e) for e in fx)
+            fy_str = ','.join(str(e) for e in fy)
+            ft_str = ','.join(str(e) for e in ft)
+            raw_out = str(frame)+" "+str(ttamp)+" "+str(v_id)+" "+fx_str+" "+fy_str+" "+ft_str
             dm.storeRawResult(raw_out)
             print(raw_out)
 
