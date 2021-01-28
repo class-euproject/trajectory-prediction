@@ -13,6 +13,7 @@ def main():
         fields = line.split()
 
         frame = fields[1]
+        ttamp = fields[2]
 
         v_id = fields[9]
 
@@ -47,7 +48,8 @@ def main():
             # calculate trajectory by v3
             fx, fy, ft = traj_pred_v3(dqx, dqy, dqt)
             dm.storeResult(frame, v_id, fx, fy, ft)
-            raw_out = "frame: " + str(frame) + " v_id: " + str(v_id) + " x: " + str(fx) + " y: " + str(fy) + " t: " + str(ft)
+            #raw_out = "frame: " + str(frame) + " v_id: " + str(v_id) + " x: " + str(fx) + " y: " + str(fy) + " t: " + str(ft)
+            raw_out = str(frame)+" "+str(ttamp)+" "+str(v_id)+" "+str(fx)+" "+str(fy)+" "+str(ft)
             dm.storeRawResult(raw_out)
             print(raw_out)
 
