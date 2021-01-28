@@ -4,11 +4,7 @@ from collections import deque
 init()
 
 from CityNS.classes import *
-from tp.v3TP import QUAD_REG_LEN, QUAD_REG_MIN, Vehicle, PRECISION
-from geolib import geohash
-
-import multiprocessing
-from multiprocessing.pool import ThreadPool as Pool
+from tp.v3TP import QUAD_REG_LEN, QUAD_REG_MIN
 
 from dataclay import getRuntime
 from dataclay.api import get_backend_id_by_name
@@ -27,7 +23,7 @@ class DataclayObjectManager:
             self.KB.make_persistent(alias="DKB")
 
     def getAllObjects(self):
-        return self.KB.get_objects()
+        return self.KB.get_objects(events_length_max=QUAD_REG_LEN, events_length_min=QUAD_REG_MIN)
     
     def getObject(self, oid):
         obj_id, class_id = oid.split(":")
