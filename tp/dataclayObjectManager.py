@@ -23,7 +23,29 @@ class DataclayObjectManager:
             self.KB.make_persistent(alias="DKB")
 
     def getAllObjects(self):
-        return self.KB.get_objects(events_length_max=QUAD_REG_LEN, events_length_min=QUAD_REG_MIN)
+        allObjects = self.KB.get_objects(events_length_max=QUAD_REG_LEN, events_length_min=QUAD_REG_MIN)
+
+        '''
+        for j in range(len(allObjects)):
+            obj = allObjects[j]
+            for i in range(len(obj[5][0])):
+              obj[5][0][i] = round(obj[5][0][i], 14)
+            for i in range(len(obj[5][1])):
+              obj[5][1][i] = round(obj[5][1][i], 14)
+            allObjects[j] = obj
+
+
+        print('===========')
+
+        for obj in allObjects:
+            for i in range(len(obj[5][0])):
+                print(obj[5][0][i])
+            for i in range(len(obj[5][1])):
+                print(obj[5][1][i])
+        print('======+=====')
+        '''
+        return allObjects
+#        return self.KB.get_objects(events_length_max=QUAD_REG_LEN, events_length_min=QUAD_REG_MIN)
     
     def getObject(self, oid):
         obj_id, class_id = oid.split(":")
@@ -31,8 +53,8 @@ class DataclayObjectManager:
         class_id = uuid.UUID(class_id)
         return getRuntime().get_object_by_id(obj_id, hint=self.backend_id, class_id=class_id)
 
-    def storeResult(self, obj, fx, fy, ft):
-        obj.add_prediction(fx,fy,ft)
+    def storeResult(self, obj, fx, fy, ft, tp_timestamp):
+        obj.add_prediction(fx,fy,ft, tp_timestamp)
 
     def getResult(self, oid):
         obj = self.getObject(oid)

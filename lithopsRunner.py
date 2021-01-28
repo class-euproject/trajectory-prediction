@@ -27,10 +27,11 @@ def traj_pred_v2_wrapper(objects_chunk):
       # calculate trajectory by v2
       fx, fy, ft = traj_pred_v3(objectTuple[5][0], objectTuple[5][1], objectTuple[5][2])
 
-      print("v_id: " + str(objectTuple[0]) + " x: " + str(fx) + " y: " + str(fy) + " t: " + str(ft))
+      print("v_id: " + str(objectTuple[6]) + " x: " + str(fx) + " y: " + str(fy) + " t: " + str(ft))
 
       obj = dm.getObject(objectTuple[0])
-      dm.storeResult(obj, fx, fy, ft)
+      tp_timestamp = objectTuple[5][2][-1]
+      dm.storeResult(obj, fx, fy, ft, tp_timestamp)
     return {}
 
 def run(params=[]):
