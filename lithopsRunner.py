@@ -12,6 +12,7 @@ from tp.dataclayObjectManager import DataclayObjectManager
 from tp.v3TP import traj_pred_v3
 
 from tp.mytrace import timeConsumed
+import paho.mqtt.client as mqtt
 
 
 def _printResults(allObjectsTuples, dm):
@@ -81,6 +82,11 @@ def run(params=[]):
         fexec.wait(download_results=False, WAIT_DUR_SEC=0.015)
 
         timeConsumed("pw.get_result")
+    
+    client=mqtt.Client()
+    client.connect("192.168.7.41")
+    topic = "tp-out"
+    client.publish(topic,f"TP finished")
     
     _printResults(allObjectsTuples, dm)
     timeConsumed("printResults")
