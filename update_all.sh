@@ -1,6 +1,7 @@
 #!/bin/bash
 
-RUNTIME_NAME=kpavel/lithops_runtime:13.0
+RUNTIME_NAME=192.168.7.41:5000/kpavel/lithops_runtime:13.0
+#RUNTIME_NAME=kpavel/lithops_runtime:13.0
 
 echo -n Password: 
 read -s password
