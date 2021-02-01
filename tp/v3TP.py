@@ -88,22 +88,31 @@ def traj_pred_v3(dqx, dqy, dqt):
         vct_xp.append(last_t + i*(PRED_RANGE_MIL/1000))
         ft.append(vct_t[-1] + i*PRED_RANGE_MIL)    
     
-    # calculate x'
-    fx = quad_reg(vct_x, vct_y, vct_xp)
     
-    # need to check R2 (rename it to RSquared) and if it's reasonable...
-    # ... let's say > 0.8?, then proceed, otherwise...??? lots of outliers?
-
-    #
-    # 2. find fy
-    #   
-
-    # the y vector is the y positions for this calculation of fx
-    vct_y = list(dqy)
-    # vct_x (timestamps) and vct_xp (predicted timestamps) are the same
+    # if all 'x' and 'y' values are the same, the object is stopped
+    # return same value for predictions
+    if (all(dqx_elem == dqx[0] for dqx_elem in dqx)) and (all(dqy_elem == dqy[0] for dqy_elem in dqy)):
+        fx = [dqx[0]] * QUAD_REG_OFFSET
+        fy = [dqy[0]] * QUAD_REG_OFFSET
     
-    # calculate y'
-    fy = quad_reg(vct_x, vct_y, vct_xp)
+    # if not, calculate x' and y'
+    else:
+        # 1a. calculate x'
+        fx = quad_reg(vct_x, vct_y, vct_xp)
+    
+        # need to check R2 (rename it to RSquared) and if it's reasonable...
+        # ... let's say > 0.8?, then proceed, otherwise...??? lots of outliers?
+
+        #
+        # 2. find fy
+        #   
+
+        # the y vector is the y positions for this calculation of fx
+        vct_y = list(dqy)
+        # vct_x (timestamps) and vct_xp (predicted timestamps) are the same
+    
+        # calculate y'
+        fy = quad_reg(vct_x, vct_y, vct_xp)
     
     # now the output is 3 arrays for timestamps, x and y positions
     return fx, fy, ft
