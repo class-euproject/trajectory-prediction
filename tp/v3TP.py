@@ -29,12 +29,13 @@ import sys
 import numpy as np
 from collections import deque
 import math
+import statistics
 
 
-QUAD_REG_LEN = 20 # max amount of trajectory points to manage
+QUAD_REG_LEN = 50 # max amount of trajectory points to manage
 QUAD_REG_OFFSET = 5 # how many points to predict
-QUAD_REG_MIN = 5 # min amount of trajectory points to start predicting
-PRED_RANGE_MIL = 1000 # range for predicted points in milliseconds 
+QUAD_REG_MIN = 10 # min amount of trajectory points to start predicting
+PRED_RANGE_MIL = 500 # range for predicted points in milliseconds 
 PRECISION = 9
 
 
@@ -50,7 +51,7 @@ class Vehicle:
         self._dqt = dqt
         
 
-def traj_pred_v3(dqx, dqy, dqt):
+def traj_pred_v3(dqx, dqy, dqt,static):
 #def traj_pred_v2(v):
     
     #
@@ -88,12 +89,11 @@ def traj_pred_v3(dqx, dqy, dqt):
         vct_xp.append(last_t + i*(PRED_RANGE_MIL/1000))
         ft.append(vct_t[-1] + i*PRED_RANGE_MIL)    
     
-    
     # if all 'x' and 'y' values are the same, the object is stopped
     # return same value for predictions
-    if (all(dqx_elem == dqx[0] for dqx_elem in dqx)) and (all(dqy_elem == dqy[0] for dqy_elem in dqy)):
-        fx = [dqx[0]] * QUAD_REG_OFFSET
-        fy = [dqy[0]] * QUAD_REG_OFFSET
+    if ((all(dqx_elem == dqx[0] for dqx_elem in dqx)) and (all(dqy_elem == dqy[0] for dqy_elem in dqy)) or static):
+        fx = [dqx[len(dqx)-1]] * QUAD_REG_OFFSET
+        fy = [dqy[len(dqx)-1]] * QUAD_REG_OFFSET
     
     # if not, calculate x' and y'
     else:

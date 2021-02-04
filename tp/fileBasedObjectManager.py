@@ -9,12 +9,12 @@ class FileBasedObjectManager:
     file_content = ""
     raw_output = ""
 
-    def __init__(self, path='.'):
+    def __init__(self, path='.', filename="worflow.log"):
 
         self.output_path = path
 
         # read workflow test data
-        infile = path + "/workflow.log"
+        infile = path + "/" + filename
 
         content = str()
         with open(infile) as f:
