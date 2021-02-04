@@ -53,8 +53,8 @@ class DataclayObjectManager:
         class_id = uuid.UUID(class_id)
         return getRuntime().get_object_by_id(obj_id, hint=self.backend_id, class_id=class_id)
 
-    def storeResult(self, obj, fx, fy, ft, tp_timestamp):
-        obj.add_prediction(fx,fy,ft, tp_timestamp)
+    def storeResult(self, obj, fx, fy, ft, tp_timestamp, frame_tp):
+        obj.add_prediction(fx,fy,ft, tp_timestamp, frame_tp)
 
     def getResult(self, oid):
         obj = self.getObject(oid)

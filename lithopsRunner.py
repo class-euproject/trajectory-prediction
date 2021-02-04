@@ -32,7 +32,7 @@ def traj_pred_v2_wrapper(objects_chunk):
 
       obj = dm.getObject(objectTuple[0])
       tp_timestamp = objectTuple[5][2][-1]
-      dm.storeResult(obj, fx, fy, ft, tp_timestamp)
+      dm.storeResult(obj, fx, fy, ft, tp_timestamp, objectTuple[7])
     return {}
 
 def run(params=[]):
