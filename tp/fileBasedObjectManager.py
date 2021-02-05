@@ -59,7 +59,7 @@ class FileBasedObjectManager:
     def createResultsFile(self):
         with open(self.output_path + "/results.txt", 'w') as outfile:
             json.dump(self.results, outfile)
-        with open(self.output_path + "/raw_results.txt", "w") as raw_file:
+        with open(self.output_path + "/raw_results_TP.txt", "w") as raw_file:
             raw_file.write(self.raw_output)
         
         

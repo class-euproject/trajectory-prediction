@@ -35,7 +35,7 @@ import statistics
 QUAD_REG_LEN = 50 # max amount of trajectory points to manage
 QUAD_REG_OFFSET = 5 # how many points to predict
 QUAD_REG_MIN = 10 # min amount of trajectory points to start predicting
-PRED_RANGE_MIL = 500 # range for predicted points in milliseconds 
+PRED_RANGE_MIL = 1000 # range for predicted points in milliseconds 
 PRECISION = 9
 
 
@@ -51,8 +51,9 @@ class Vehicle:
         self._dqt = dqt
         
 
-def traj_pred_v3(dqx, dqy, dqt,static):
-#def traj_pred_v2(v):
+def traj_pred_v3(dqx, dqy, dqt,static,
+                 reg_offset=QUAD_REG_OFFSET,
+                 range_mil=PRED_RANGE_MIL):
     
     #
     # 1. find fx
@@ -75,25 +76,20 @@ def traj_pred_v3(dqx, dqy, dqt,static):
     # the y vector is the x positions for this calculation of fx
     vct_y = list(dqx)
 
-    # quad_reg finds the quadratic equation using least-squares 
-    # that fits the given values of x: timestamps, y: values of x
-    # the returned value is 
-    #fx = quad_reg(vct_x, vct_y, QUAD_REG_LEN+QUAD_REG_OFFSET-1)
-    
     # generate array of timestamps to predict and original predicted timestamps
     vct_xp = list()
     ft = list()
     last_t = vct_x[-1]
     
-    for i in range(1,QUAD_REG_OFFSET+1):
-        vct_xp.append(last_t + i*(PRED_RANGE_MIL/1000))
-        ft.append(vct_t[-1] + i*PRED_RANGE_MIL)    
+    for i in range(1,reg_offset+1):
+        vct_xp.append(last_t + i*(range_mil/1000))
+        ft.append(vct_t[-1] + i*range_mil)    
     
     # if all 'x' and 'y' values are the same, the object is stopped
     # return same value for predictions
     if ((all(dqx_elem == dqx[0] for dqx_elem in dqx)) and (all(dqy_elem == dqy[0] for dqy_elem in dqy)) or static):
-        fx = [dqx[len(dqx)-1]] * QUAD_REG_OFFSET
-        fy = [dqy[len(dqx)-1]] * QUAD_REG_OFFSET
+        fx = [dqx[len(dqx)-1]] * reg_offset
+        fy = [dqy[len(dqx)-1]] * reg_offset
     
     # if not, calculate x' and y'
     else:

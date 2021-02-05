@@ -77,6 +77,11 @@ def main():
     workflow_log = sys.argv[4]
     threshold_mov = float(sys.argv[5])
 
+    reg_len = int(sys.argv[6])
+    reg_offset = int(sys.argv[7])
+    reg_min = int(sys.argv[8])
+    range_mil = int(sys.argv[9])
+    
     dm = FileBasedObjectManager(path=sys.argv[1],filename=workflow_log)
 
     content = dm.getFileContent()
@@ -112,7 +117,7 @@ def main():
         t = int(fields[2])
         dqt.append(t)
 
-        if len(dqx) > QUAD_REG_LEN:
+        if len(dqx) > reg_len:
             dqx.popleft()
             dqy.popleft()
             dqt.popleft()
@@ -125,14 +130,14 @@ def main():
             dqy[i] = round(dqy[i],7)
 
         # predict if has a minimum amount of data
-        if len(dqx) >= QUAD_REG_MIN:
+        if len(dqx) >= reg_min:
 
             #static = (1 == 0)
             #if(v_id == "2406_9"):
             static = is_object_static (traj_x,traj_y,w,h,threshold_mov,dqx,dqy,InvProjMat, adfGeoTransform)
 
             # calculate trajectory by v3
-            fx, fy, ft = traj_pred_v3(dqx, dqy, dqt,static)
+            fx, fy, ft = traj_pred_v3(dqx, dqy, dqt,static,reg_offset,range_mil)
 
             dm.storeResult(frame, v_id, fx, fy, ft)
             #raw_out = "frame: " + str(frame) + " v_id: " + str(v_id) + " x: " + str(fx) + " y: " + str(fy) + " t: " + str(ft)
