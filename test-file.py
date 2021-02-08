@@ -6,16 +6,6 @@ import cv2
 import numpy as np
 #from osgeo import gdal
 
-def GPS2Pixel(lat, lon, InvProjMat, adfGeoTransform):
-    x = (lon - adfGeoTransform[0]) / adfGeoTransform[1]
-    y = (lat - adfGeoTransform[3]) / adfGeoTransform[5]
-
-    mapPixels = np.array([[[x, y]]], dtype='float32')
-    imgPixels = cv2.perspectiveTransform(mapPixels, InvProjMat)
-
-    # print("At GPS2Pixel: ("+str(lat)+","+str(lon)+")->("+str(imgPixels[0][0][0])+","+str(imgPixels[0][0][1])+")")
-    return int(imgPixels[0][0][0]), int(imgPixels[0][0][1])
-
 def generate_transformation_da(ProjMat_file,GeoTransform_file):
         
     with open(ProjMat_file) as f:
@@ -28,47 +18,6 @@ def generate_transformation_da(ProjMat_file,GeoTransform_file):
     adfGeoTransform = np.array(rows_gt[0], dtype = 'float32')
         
     return ProjMat, InvProjMat, adfGeoTransform
-
-def compute_maxmin_coord(coord, assoc_coord):
-
-    max1 = max(coord)
-    maxi = [i for i, j in enumerate(coord) if j == max1]             
-    max_assoc_coord = deque()
-    for i in maxi: max_assoc_coord.append(assoc_coord[i])
-    max2 = max(max_assoc_coord)
-
-    min1 = min(coord)
-    mini = [i for i, j in enumerate(coord) if j == min1]             
-    min_assoc_coord = deque()
-    for i in mini: min_assoc_coord.append(assoc_coord[i])
-    min2 = min(min_assoc_coord)
-
-    return max1, max2, min1, min2
-
-def is_object_static (traj_x, traj_y,w,h,thr_box,dqx,dqy,InvProjMat, adfGeoTransform):
-
-    thr_x, thr_y = w*thr_box, h*thr_box
-
-    center_bb = GPS2Pixel(traj_x,traj_y,InvProjMat, adfGeoTransform)
-    x1, x2, y1, y2 = center_bb[0] - thr_x, center_bb[0] + thr_x, center_bb[1] - thr_y, center_bb[1] + thr_y
-
-
-    maxlat, maxlat_lon, minlat, minlat_lon = compute_maxmin_coord(dqx, dqy)
-    maxlon, maxlon_lat, minlon, minlon_lat = compute_maxmin_coord(dqy, dqx)
-
-    pixel_maxlat = GPS2Pixel(maxlat, maxlat_lon, InvProjMat, adfGeoTransform) 
-    pixel_maxlon = GPS2Pixel(maxlon_lat, maxlon, InvProjMat, adfGeoTransform) 
-    pixel_minlat = GPS2Pixel(minlat, minlat_lon, InvProjMat, adfGeoTransform) 
-    pixel_minlon = GPS2Pixel(minlon_lat, minlon, InvProjMat, adfGeoTransform) 
-                                 
-    # print(pixel_maxlat)
-    # print(pixel_maxlon)
-    # print(pixel_minlat)
-    # print(pixel_minlon)
-    # print(x1, y1, x2, y2)
-    # print(" ")
-                
-    return ((x1<=pixel_maxlat[0]<=x2) and (x1<=pixel_maxlon[0]<=x2) and (x1<=pixel_minlat[0]<=x2) and (x1<=pixel_minlon[0]<=x2) and (y1<=pixel_maxlat[1]<=y2) and (y1<=pixel_maxlon[1]<=y2) and (y1<=pixel_minlat[1]<=y2) and (y1<=pixel_minlon[1]<=y2))
 
 def main():
 
@@ -134,10 +83,10 @@ def main():
 
             #static = (1 == 0)
             #if(v_id == "2406_9"):
-            static = is_object_static (traj_x,traj_y,w,h,threshold_mov,dqx,dqy,InvProjMat, adfGeoTransform)
+            #static = is_object_static (traj_x,traj_y,w,h,threshold_mov,dqx,dqy,InvProjMat, adfGeoTransform)
 
             # calculate trajectory by v3
-            fx, fy, ft = traj_pred_v3(dqx, dqy, dqt,static,reg_offset,range_mil)
+            fx, fy, ft = traj_pred_v3(dqx, dqy, dqt,w,h,InvProjMat,adfGeoTransform,reg_offset,range_mil,threshold_mov)
 
             dm.storeResult(frame, v_id, fx, fy, ft)
             #raw_out = "frame: " + str(frame) + " v_id: " + str(v_id) + " x: " + str(fx) + " y: " + str(fy) + " t: " + str(ft)
