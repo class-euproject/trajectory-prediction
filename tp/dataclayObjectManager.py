@@ -3,7 +3,7 @@ from collections import deque
 
 init()
 
-from CityNS.classes import *
+from CityNS.classes import DKB, uuid
 from tp.v3TP import QUAD_REG_LEN, QUAD_REG_MIN
 
 from dataclay import getRuntime
@@ -19,13 +19,13 @@ class DataclayObjectManager:
             self.KB = DKB.get_by_alias(alias)
         except Exception:
             self.KB = DKB()
-            self.KB.cloud_backend_id = backend_id
+            self.KB.cloud_backend_id = self.backend_id
             self.KB.make_persistent(alias="DKB")
 
     def getAllObjects(self):
+        '''
         allObjects = self.KB.get_objects(events_length_max=QUAD_REG_LEN, events_length_min=QUAD_REG_MIN)
 
-        '''
         for j in range(len(allObjects)):
             obj = allObjects[j]
             for i in range(len(obj[5][0])):
@@ -43,9 +43,9 @@ class DataclayObjectManager:
             for i in range(len(obj[5][1])):
                 print(obj[5][1][i])
         print('======+=====')
-        '''
         return allObjects
-#        return self.KB.get_objects(events_length_max=QUAD_REG_LEN, events_length_min=QUAD_REG_MIN)
+        '''
+        return self.KB.get_objects(events_length_max=QUAD_REG_LEN, events_length_min=QUAD_REG_MIN)
     
     def getObject(self, oid):
         obj_id, class_id = oid.split(":")

@@ -1,10 +1,4 @@
-from dataclay.api import init, finish
-
 import time
-
-init()
-
-from CityNS.classes import *
 
 import lithops
 
@@ -84,7 +78,7 @@ def run(params=[]):
         timeConsumed("pw.get_result")
     
     client=mqtt.Client()
-    client.connect("192.168.7.41")
+    client.connect("192.168.7.42")
     topic = "tp-out"
     client.publish(topic,f"TP finished")
     
@@ -94,6 +88,7 @@ def run(params=[]):
     return {"finished": "true"}
 
 if __name__ == '__main__':
+    import sys
     limit = None
     chunk_size = 1
     if len(sys.argv) > 1:
