@@ -32,8 +32,13 @@ import math
 
 
 QUAD_REG_LEN = 20 # max amount of trajectory points to manage
-QUAD_REG_OFFSET = 5 # how many points to predict
 QUAD_REG_MIN = 5 # min amount of trajectory points to start predicting
+P_QUAD_REG_LEN = 50 # (pedestrians) max amount of trajectory points to manage
+P_QUAD_REG_MIN = 20 # (pedestrians) min amount of trajectory points to start predicting
+V_QUAD_REG_LEN = 40 # (vehicles) max amount of trajectory points to manage
+V_QUAD_REG_MIN = 10 # (vehicles) min amount of trajectory points to start predicting
+
+QUAD_REG_OFFSET = 5 # how many points to predict
 PRED_RANGE_MIL = 1000 # range for predicted points in milliseconds 
 PRECISION = 9
 
@@ -50,8 +55,9 @@ class Vehicle:
         self._dqt = dqt
         
 
-def traj_pred_v3(dqx, dqy, dqt):
-#def traj_pred_v2(v):
+def traj_pred_v3(dqx, dqy, dqt,
+                 reg_offset=QUAD_REG_OFFSET,
+                 range_mil=PRED_RANGE_MIL):
     
     #
     # 1. find fx
@@ -84,16 +90,16 @@ def traj_pred_v3(dqx, dqy, dqt):
     ft = list()
     last_t = vct_x[-1]
     
-    for i in range(1,QUAD_REG_OFFSET+1):
-        vct_xp.append(last_t + i*(PRED_RANGE_MIL/1000))
-        ft.append(vct_t[-1] + i*PRED_RANGE_MIL)    
+    for i in range(1,reg_offset+1):
+        vct_xp.append(last_t + i*(range_mil/1000))
+        ft.append(vct_t[-1] + i*range_mil)    
     
     
     # if all 'x' and 'y' values are the same, the object is stopped
     # return same value for predictions
     if (all(dqx_elem == dqx[0] for dqx_elem in dqx)) and (all(dqy_elem == dqy[0] for dqy_elem in dqy)):
-        fx = [dqx[0]] * QUAD_REG_OFFSET
-        fy = [dqy[0]] * QUAD_REG_OFFSET
+        fx = [dqx[-1]] * reg_offset
+        fy = [dqy[-1]] * reg_offset
     
     # if not, calculate x' and y'
     else:
