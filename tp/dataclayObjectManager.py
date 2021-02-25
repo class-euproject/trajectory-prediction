@@ -4,7 +4,7 @@ from collections import deque
 init()
 
 from CityNS.classes import DKB, uuid
-from tp.v3TP import QUAD_REG_LEN, QUAD_REG_MIN
+from tp.v3TP import QUAD_REG_LEN_DICT, QUAD_REG_MIN_DICT
 
 from dataclay import getRuntime
 from dataclay.api import get_backend_id_by_name
@@ -45,7 +45,7 @@ class DataclayObjectManager:
         print('======+=====')
         return allObjects
         '''
-        return self.KB.get_objects(events_length_max=QUAD_REG_LEN, events_length_min=QUAD_REG_MIN)
+        return self.KB.get_objects(events_length_max=QUAD_REG_LEN_DICT, events_length_min=QUAD_REG_MIN_DICT)
     
     def getObject(self, oid):
         obj_id, class_id = oid.split(":")

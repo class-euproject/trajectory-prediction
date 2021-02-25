@@ -33,10 +33,30 @@ import math
 
 QUAD_REG_LEN = 20 # max amount of trajectory points to manage
 QUAD_REG_MIN = 5 # min amount of trajectory points to start predicting
-P_QUAD_REG_LEN = 50 # (pedestrians) max amount of trajectory points to manage
-P_QUAD_REG_MIN = 20 # (pedestrians) min amount of trajectory points to start predicting
-V_QUAD_REG_LEN = 40 # (vehicles) max amount of trajectory points to manage
-V_QUAD_REG_MIN = 10 # (vehicles) min amount of trajectory points to start predicting
+
+# max amount of trajectory points to manage per class
+QUAD_REG_LEN_DICT = {
+    "person":50,
+    "car":40,
+    "truck":40,
+    "bus":40,
+    "motor":40,
+    "bike":40,
+    "rider":50,
+    "train":40
+}
+
+# min amount of trajectory points to start predicting per class
+QUAD_REG_MIN_DICT = {
+    "person":20,
+    "car":10,
+    "truck":10,
+    "bus":10,
+    "motor":10,
+    "bike":10,
+    "rider":20,
+    "train":10
+}
 
 QUAD_REG_OFFSET = 5 # how many points to predict
 PRED_RANGE_MIL = 1000 # range for predicted points in milliseconds 
