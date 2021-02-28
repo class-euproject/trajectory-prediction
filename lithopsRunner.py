@@ -29,9 +29,24 @@ def traj_pred_v2_wrapper(objects_chunk):
       dm.storeResult(obj, fx, fy, ft, tp_timestamp, objectTuple[7])
     return {}
 
+CONCURRENT_TP = 2
+REDIS_HOST = '10.106.33.95'
+def acquireLock():
+    import redis
+    redis_client = redis.StrictRedis(host=REDIS_HOST,port=6379)
+    for i in range(CONCURRENT_TP):
+        lock = redis_client.lock(f'tplock{i}', 30, 0.1, 0.01)
+        if lock.acquire():
+            return lock
+    return None
+
 def run(params=[]):
 
     print("params: %s" % params)
+
+    lock = acquireLock()
+    if not lock:
+        return {'error': f'There currently maximum number of {CONCURRENT_TP} simulatiously running TP actions'}
 
     timeConsumed("start")   #TODO: to be removed. needed for debugging
 
@@ -84,6 +99,8 @@ def run(params=[]):
     
     _printResults(allObjectsTuples, dm)
     timeConsumed("printResults")
+
+    lock.release()
 
     return {"finished": "true"}
 
