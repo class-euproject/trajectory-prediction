@@ -1,7 +1,7 @@
 #!/bin/bash
 
 RUNTIME_NAME=192.168.7.41:5000/kpavel/lithops_runtime:13.0
-PROJECTS_ROOT_DIR="/home/class/"
+PROJECTS_ROOT_DIR="${HOME}"
 #RUNTIME_NAME=kpavel/lithops_runtime:13.0
 
 echo -n Password: 
