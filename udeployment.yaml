@@ -5,7 +5,7 @@ metadata:
   labels:
     app: upd
 spec:
-  replicas: 10
+  replicas: 4
   selector:
     matchLabels:
       app: upd

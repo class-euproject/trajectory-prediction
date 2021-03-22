@@ -30,8 +30,7 @@ def traj_pred_v2_wrapper(objects_chunk):
     return {}
 
 CONCURRENT_TP = 4
-REDIS_HOST = '10.106.33.95'
-def acquireLock():
+def acquireLock(REDIS_HOST):
     import redis
     redis_client = redis.StrictRedis(host=REDIS_HOST,port=6379)
     for i in range(CONCURRENT_TP):
@@ -44,7 +43,7 @@ def run(params=[]):
 
     print("params: %s" % params)
 
-    lock = acquireLock()
+    lock = acquireLock(params['REDIS_HOST'])
     if not lock:
         return {'error': f'There currently maximum number of {CONCURRENT_TP} simulatiously running TP actions'}
 
@@ -104,6 +103,9 @@ def run(params=[]):
 
     return {"finished": "true"}
 
+
+REDIS_HOST = '10.101.88.224'
+
 if __name__ == '__main__':
     import sys
     limit = None
@@ -112,4 +114,4 @@ if __name__ == '__main__':
         chunk_size = sys.argv[1]
     if len(sys.argv) > 2:
         limit = sys.argv[2]
-    run(params={"CHUNK_SIZE" : chunk_size, "LIMIT": limit, "ALIAS" : "DKB"})
+    run(params={"CHUNK_SIZE" : chunk_size, "LIMIT": limit, "ALIAS" : "DKB", "REDIS_HOST" : REDIS_HOST})

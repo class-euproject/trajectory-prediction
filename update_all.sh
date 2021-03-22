@@ -1,7 +1,9 @@
 #!/bin/bash
 
+REDIS_HOST=`kubectl -n openwhisk get svc|grep redis|awk '{print $3}'`
 RUNTIME_NAME=192.168.7.41:5000/kpavel/lithops_runtime:13.0
 PROJECTS_ROOT_DIR="${HOME}"
+source ${PROJECTS_ROOT_DIR}/venv/bin/activate
 #RUNTIME_NAME=kpavel/lithops_runtime:13.0
 
 echo -n Password: 
@@ -75,12 +77,12 @@ kubectl -n openwhisk delete pod owdev-invoker-2
 
 echo -n "Update trajectory prediction OW action"
 zip -r classAction.zip __main__.py .lithops_config cfgfiles/ stubs/ lithopsRunner.py tp
-wsk -i action update tpAction --docker $RUNTIME_NAME --timeout 30000 -p ALIAS DKB -p CHUNK_SIZE 20 --memory 512 classAction.zip
+wsk -i action update tpAction --docker $RUNTIME_NAME --timeout 30000 -p ALIAS DKB -p CHUNK_SIZE 20 -p REDIS_HOST ${REDIS_HOST} --memory 512 classAction.zip
 
 echo -n "Update collision detection OW action"
 cd ${PROJECTS_ROOT_DIR}/collision-detection
 zip -r classAction.zip __main__.py .lithops_config cfgfiles/ stubs/ cdLithopsRunner.py cd
-wsk -i action update cdAction --docker $RUNTIME_NAME --timeout 30000  -p ALIAS DKB -p CHUNK_SIZE 10 --memory 512 classAction.zip
+wsk -i action update cdAction --docker $RUNTIME_NAME --timeout 30000  -p ALIAS DKB -p CHUNK_SIZE 10 -p REDIS_HOST ${REDIS_HOST} --memory 512 classAction.zip
 
 wsk -i rule create cdtimerrule cdtimer /guest/cdAction
 wsk -i rule create tp-rule tp-trigger tpAction
