@@ -1,27 +1,22 @@
-# -*- coding: utf-8 -*-
+# Trajectory Prediction application
+# CLASS Project: https://class-project.eu/
 
-# /*
-#  * Copyright (C) 2019  Atos Spain SA. All rights reserved.
-#  *
-#  * This file is part of pCEP.
-#  *
-#  * pCEP is free software: you can redistribute it and/or modify it under the
-#  * terms of the Apache License, Version 2.0 (the License);
-#  *
-#  * http://www.apache.org/licenses/LICENSE-2.0
-#  *
-#  * The software is provided "AS IS", without any warranty of any kind, express or implied,
-#  * including but not limited to the warranties of merchantability, fitness for a particular
-#  * purpose and noninfringement, in no event shall the authors or copyright holders be
-#  * liable for any claim, damages or other liability, whether in action of contract, tort or
-#  * otherwise, arising from, out of or in connection with the software or the use or other
-#  * dealings in the software.
-#  *
-#  * See README file for the full disclaimer information and LICENSE file for full license
-#  * information in the project root.
-#  *
-#  * Authors:  Atos Research and Innovation, Atos SPAIN SA
-#  */
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     https://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+#
+# Created on 8 Jun 2020
+# @author: Jorge Montero - ATOS
+#
 
 
 import os
