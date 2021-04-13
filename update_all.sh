@@ -70,10 +70,17 @@ echo "Stopping running runtimes"
 docker ps -a | grep kpavel_lithops|awk '{print $1 }'| xargs -I {} docker unpause {}
 docker ps -a | grep kpavel_lithops|awk '{print $1 }'| xargs -I {} docker rm -f {}
 
-kubectl -n openwhisk delete pod owdev-kafka-0
-kubectl -n openwhisk delete pod owdev-invoker-0
-kubectl -n openwhisk delete pod owdev-invoker-1
-kubectl -n openwhisk delete pod owdev-invoker-2
+if false; then
+    kubectl -n openwhisk delete pod owdev-invoker-0
+    kubectl -n openwhisk delete pod owdev-invoker-1
+    kubectl -n openwhisk delete pod owdev-invoker-2
+    kubectl -n openwhisk delete pod owdev-invoker-3
+    kubectl -n openwhisk delete pod owdev-controller-0
+    kubectl -n openwhisk delete pod owdev-controller-1
+    kubectl -n openwhisk delete pod owdev-controller-2
+    kubectl -n openwhisk delete pod owdev-controller-3
+    sleep 30
+fi
 
 echo -n "Update trajectory prediction OW action"
 zip -r classAction.zip __main__.py .lithops_config cfgfiles/ stubs/ lithopsRunner.py tp

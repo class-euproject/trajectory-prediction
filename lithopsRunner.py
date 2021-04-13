@@ -71,7 +71,10 @@ def run(params=[]):
     dm = DataclayObjectManager(alias=alias)
     timeConsumed("DataclayObjectManager")
 
+#    import pdb;pdb.set_trace()
+
     allObjectsTuples = dm.getAllObjects()[:limit]
+#    import pdb;pdb.set_trace()
     timeConsumed("dm.getAllObjects: %d " % len(allObjectsTuples))
 
     def chunker(seq, size):
@@ -104,7 +107,7 @@ def run(params=[]):
     return {"finished": "true"}
 
 
-REDIS_HOST = '10.101.88.224'
+REDIS_HOST = '10.106.33.95'
 
 if __name__ == '__main__':
     import sys

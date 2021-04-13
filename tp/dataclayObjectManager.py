@@ -1,19 +1,17 @@
 from dataclay.api import init, finish
 from collections import deque
-
 init()
-
-from CityNS.classes import DKB, uuid
 from tp.v3TP import QUAD_REG_LEN_DICT, QUAD_REG_MIN_DICT
-
 from dataclay import getRuntime
 from dataclay.api import get_backend_id_by_name
-
+from CityNS.classes import uuid
+from CityNS.classes import DKB
 
 class DataclayObjectManager:
     KB = None
     
     def __init__(self, alias="DKB"):
+        print("in DataclayObjectManager.__init__")
         self.backend_id = get_backend_id_by_name("DS1")
         try:
             self.KB = DKB.get_by_alias(alias)
@@ -23,28 +21,7 @@ class DataclayObjectManager:
             self.KB.make_persistent(alias="DKB")
 
     def getAllObjects(self):
-        '''
-        allObjects = self.KB.get_objects(events_length_max=QUAD_REG_LEN, events_length_min=QUAD_REG_MIN)
-
-        for j in range(len(allObjects)):
-            obj = allObjects[j]
-            for i in range(len(obj[5][0])):
-              obj[5][0][i] = round(obj[5][0][i], 14)
-            for i in range(len(obj[5][1])):
-              obj[5][1][i] = round(obj[5][1][i], 14)
-            allObjects[j] = obj
-
-
-        print('===========')
-
-        for obj in allObjects:
-            for i in range(len(obj[5][0])):
-                print(obj[5][0][i])
-            for i in range(len(obj[5][1])):
-                print(obj[5][1][i])
-        print('======+=====')
-        return allObjects
-        '''
+        import pdb;pdb.set_trace()
         return self.KB.get_objects(events_length_max=QUAD_REG_LEN_DICT, events_length_min=QUAD_REG_MIN_DICT)
     
     def getObject(self, oid):
