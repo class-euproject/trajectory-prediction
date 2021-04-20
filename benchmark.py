@@ -1,4 +1,4 @@
-import csv 
+import csv
 from statistics import mean, median
 from columnar import columnar
 
@@ -9,6 +9,8 @@ import sys
 
 import urllib3
 import logging
+
+import click
 
 logging.basicConfig(format='%(message)s', filename='benchmark.log', level=logging.INFO)
 
@@ -30,11 +32,8 @@ BENCHLOGS = "benchlogs"
 CONTR_REPLICAS_NUM = 4
 INVOKER_REPLICAS_NUM = 4
 
-CHUNK_SIZE = sys.argv[1] if len(sys.argv) > 1 else 1
-LIMIT = sys.argv[2] if len(sys.argv) > 2 and int(sys.argv[2]) > 0 else None
-TEST_NAME = sys.argv[3] if len(sys.argv) > 3 else ''
+
 sep = '\n----------------------------------\n'
-logging.info(f'\n{sep}{TEST_NAME}{sep}CHUNK_SIZE: {CHUNK_SIZE} LIMIT: {LIMIT}{sep}')
 
 def getLogs():
     #get controller logs
@@ -176,6 +175,8 @@ def getLithopsRuntimesActivationIDS(aid):
     return activations
 
 TD_FORMAT = '[%Y-%m-%dT%H:%M:%S.%fZ]'
+import re
+re.compile('(\\d+)_(\\d+):(\\d+)_(\\d+)')
 
 def get_invocation_times(aid):
     logs = getActivationLogs(aid)
@@ -190,11 +191,13 @@ def get_invocation_times(aid):
 
     for b_cd in before_cd:
         pair = b_cd.split()[4].split('=')[1:]
+        match = re.search(r"(\d+)_(\d+):(\d+)_(\d+)", pair[0])
+        pair = match.group()
 
         b_ts = toDatetime(b_cd.split()[0][:26])
 
-#        import pdb;pdb.set_trace()
-        a_ts_str = find_in_activation_log(logs, f'after call collision_detection={pair[0]}', 0)
+        a_ts_str = find_in_activation_log(logs, f'after call collision_detection={pair}', 0)
+
         a_ts = toDatetime(a_ts_str.split()[0][:26])
 
         cd_time = time_diff_milli(b_ts, a_ts)
@@ -203,7 +206,7 @@ def get_invocation_times(aid):
 
 #    import pdb;pdb.set_trace()
 
-    min_cd = round(min(cd_res), 2) if cd_res else float('inf') 
+    min_cd = round(min(cd_res), 2) if cd_res else float('inf')
     min_cd = f'{min_cd} {cd_res[min_cd]}' if cd_res else f'{min_cd}'
     max_cd = round(max(cd_res), 2) if cd_res else float('-inf')
     max_cd = f'{max_cd} {cd_res[max_cd]}' if cd_res else f'{max_cd}'
@@ -232,7 +235,7 @@ def get_invocation_times(aid):
 
     collisions_num = len(before_mqtt)
 
-    
+
     g_func_data_start = find_in_activation_log(logs, f'Getting function data', 0)
     g_func_data_finish = find_in_activation_log(logs, f'Finished getting Function data', 0)
     if g_func_data_start:
@@ -310,145 +313,142 @@ def get_activation_invocation_times(aid):
 
     return post_controller_time, total_invoker_time, controller_instance, invoker_instance
 
+@click.command()
+@click.option('--test_name', help='Used to generate uniqueue log files names', default='')
+@click.option('--alias', default='DKB')
+@click.option('--chunk_size', default=1, help='Size of object chunks, the actual number of chunks will be determined based on object_num / chunk_size', type=int)
+@click.option('--limit', default='-1', help='Limits the number of objects. In case number of actual objects is lower it will duplicate objects up to specified limit', type=int)
+@click.option('--ccs_limit', default=None, help='Hard limit number of connected cars', type=int)
+@click.option('--dc_distributed', help='if specified will use DC in distributed approach', is_flag=True)
+
+@click.option('--dickle', help='If specified set customized_runtime option to True', is_flag=True)
+@click.option('--rabbitmq_monitor', help='If specified set rabbitmq_monitor option to True', is_flag=True)
+@click.option('--storageless', help='If specified set storage mode to storageless', is_flag=True)
+def benchmark(test_name, alias, chunk_size, limit, ccs_limit, dc_distributed, dickle, rabbitmq_monitor, storageless):
+    TEST_NAME = test_name
+
+    logging.info(f'\n{sep}{test_name}{sep}CHUNK_SIZE: {chunk_size} LIMIT: {limit}{sep}')
+
+    #print(f'{datetime.now()} {ACTION} post')
+    req_start = datetime.now()
+    data={"ALIAS": alias, "CHUNK_SIZE": chunk_size, "LIMIT": limit, "CCS_LIMIT": ccs_limit,
+            'DC_DISTRIBUTED': dc_distributed, 'DICKLE': dickle, 'RABBITMQ_MONITOR': rabbitmq_monitor, 'STORAGELESS': storageless}
+            
+    response = requests.post(url, params={'blocking':BLOCKING, 'result':RESULT}, json=data, auth=(user_pass[0], user_pass[1]), verify=False)
+
+    req_end = datetime.now()
+    getLogs()
+
+    aid = response.json()["activationId"]
+
+    cdTimes = getCDTimes(req_start, req_end, aid)
+
+    table = columnar(cdTimes, cdHeaders, no_borders=False)
+    print(table)
+    logging.info(table)
+
+    #cdTimes = (req_end.timestamp() * 1000 - req_start.timestamp() * 1000,) + cdTimes
+
+    activations = getLithopsRuntimesActivationIDS(aid)
+    activationsData = []
+    activations_times = []
+    for activation in activations:
+    #    import pdb;pdb.set_trace()
+        try:
+            activation_invocation_times = get_invocation_times(activation[2])
+        except Exception as e:
+            import pdb;pdb.set_trace()
+            activation_invocation_times = get_invocation_times(activation[2])
+            print(e)
 
 
-#print(f'{datetime.now()} {ACTION} post')
-req_start = datetime.now()
-data={"ALIAS": str(alias), "CHUNK_SIZE": CHUNK_SIZE}
-if LIMIT:
-    data["LIMIT"] = LIMIT
+        activation_invocation_times = activation[:2] + activation_invocation_times
 
-response = requests.post(url, params={'blocking':BLOCKING, 'result':RESULT}, json=data, auth=(user_pass[0], user_pass[1]), verify=False)
+        activations_times.append(activation_invocation_times)
+        data = []
+        for i, at in enumerate(activation_invocation_times):
+            data.append(at)
+        activationsData.append(data)
 
-req_end = datetime.now()
-getLogs()
+    runtimeHeaders = ['start->inv', 'start->inv_back', 'post_cont_time', 'invoker_time', 'controller_id', 'invoker_id', 'pairs', 'min_cd', 'max_cd', 'mean_cd', 'med_cd', 'cd_num', 'min_mq', 'max_mq', 'worker_start', 'g_func_data', 'g_func_modules', 'load_all', 'w_to_s_1', 'w_to_s_2', 'w_to_s_3', 'cd_netto', 'ow_ex_start_to_process_start', 'worker_time_netto']
+    table = columnar(activationsData, runtimeHeaders, no_borders=False)
+    print(table)
+    logging.info(table)
 
-aid = response.json()["activationId"]
+    def column(matrix, i):
+        return [row[i] for row in matrix]
 
-cdTimes = getCDTimes(req_start, req_end, aid)
+    min_worker_start = min(column(activationsData, 14))
+    max_worker_start = max(column(activationsData, 14))
+    #import pdb;pdb.set_trace()
+    min_max_worker_start = time_diff_milli(min_worker_start, max_worker_start)
 
-table = columnar(cdTimes, cdHeaders, no_borders=False)
-print(table)
-logging.info(table)
+    min_worker = min(column(activationsData, 0))
+    max_worker = max(column(activationsData, 0))
 
-#cdTimes = (req_end.timestamp() * 1000 - req_start.timestamp() * 1000,) + cdTimes
+    #import pdb;pdb.set_trace()
+    cd_min_time_ids = min(column(activationsData, 7))
+    cd_max_time_ids = max(column(activationsData, 8))
+    cd_avg = mean(column(activationsData, 9))
 
-activations = getLithopsRuntimesActivationIDS(aid)
-activationsData = []
-activations_times = []
-for activation in activations:
-#    import pdb;pdb.set_trace()
-    try:
-        activation_invocation_times = get_invocation_times(activation[2])
-    except Exception as e:
-        import pdb;pdb.set_trace()
-        activation_invocation_times = get_invocation_times(activation[2])
-        print(e)
+    mqtt_publish_min_col = column(activationsData, 12)
+    mqtt_publish_min_arr = []
+    ids = []
+    for item in mqtt_publish_min_col:
+        item1, *item2 = str(item).split()
+        mqtt_publish_min_arr.append(item1)
+        if item2:
+            ids.append(item2[0])
+        else:
+            ids.append(None)
 
-
-    activation_invocation_times = activation[:2] + activation_invocation_times
-
-    activations_times.append(activation_invocation_times)
-    data = []
-    for i, at in enumerate(activation_invocation_times):
-        data.append(at)
-    activationsData.append(data)
-
-runtimeHeaders = ['start->inv', 'start->inv_back', 'post_cont_time', 'invoker_time', 'controller_id', 'invoker_id', 'pairs', 'min_cd', 'max_cd', 'mean_cd', 'med_cd', 'cd_num', 'min_mq', 'max_mq', 'worker_start', 'g_func_data', 'g_func_modules', 'load_all', 'w_to_s_1', 'w_to_s_2', 'w_to_s_3', 'cd_netto', 'ow_ex_start_to_process_start', 'worker_time_netto']
-table = columnar(activationsData, runtimeHeaders, no_borders=False)
-print(table)
-logging.info(table)
-
-def column(matrix, i):
-    return [row[i] for row in matrix]
-
-min_worker_start = min(column(activationsData, 14))
-max_worker_start = max(column(activationsData, 14))
-#import pdb;pdb.set_trace()
-min_max_worker_start = time_diff_milli(min_worker_start, max_worker_start)
-
-min_worker = min(column(activationsData, 0))
-max_worker = max(column(activationsData, 0))
-
-#import pdb;pdb.set_trace()
-cd_min_time_ids = min(column(activationsData, 7))
-cd_max_time_ids = max(column(activationsData, 8))
-cd_avg = mean(column(activationsData, 9))
-
-mqtt_publish_min_col = column(activationsData, 12)
-mqtt_publish_min_arr = []
-ids = []
-for item in mqtt_publish_min_col:
-    item1, *item2 = str(item).split()
-    mqtt_publish_min_arr.append(item1)
-    if item2:
-        ids.append(item2[0])
-    else:
-        ids.append(None)
-
-mqtt_publish_min = min(mqtt_publish_min_arr)
-mqtt_publish_min_ids = ids[mqtt_publish_min_arr.index(mqtt_publish_min)]
+    mqtt_publish_min = min(mqtt_publish_min_arr)
+    mqtt_publish_min_ids = ids[mqtt_publish_min_arr.index(mqtt_publish_min)]
 
 
-mqtt_publish_max_col = column(activationsData, 13)
-mqtt_publish_max_arr = []
-ids = []
-for item in mqtt_publish_max_col:
-    item1, *item2 = str(item).split()
-    mqtt_publish_max_arr.append(item1)
-    if item2:
-        ids.append(item2[0])
-    else:
-        ids.append(None)
+    mqtt_publish_max_col = column(activationsData, 13)
+    mqtt_publish_max_arr = []
+    ids = []
+    for item in mqtt_publish_max_col:
+        item1, *item2 = str(item).split()
+        mqtt_publish_max_arr.append(item1)
+        if item2:
+            ids.append(item2[0])
+        else:
+            ids.append(None)
 
-#import pdb;pdb.set_trace()
-mqtt_publish_max = max(mqtt_publish_max_arr)
-mqtt_publish_max_ids = ids[mqtt_publish_max_arr.index(mqtt_publish_max)]
+    #import pdb;pdb.set_trace()
+    mqtt_publish_max = max(mqtt_publish_max_arr)
+    mqtt_publish_max_ids = ids[mqtt_publish_max_arr.index(mqtt_publish_max)]
 
-detections = column(activationsData, 11)
-detections_num = sum(detections)
+    detections = column(activationsData, 11)
+    detections_num = sum(detections)
 
-summaryHeaders = ['first2last_worker', 'min_max_worker_start', 'chunk_size', 'cd_min_time_ids', 'cd_max_time_ids', 'cd_avg', 'mqtt_publish_min', 'mqtt_publish_max', 'detections_num']
-summaryData = [[round(max_worker - min_worker, 2), min_max_worker_start, CHUNK_SIZE, cd_min_time_ids, cd_max_time_ids, round(cd_avg, 2), f'{mqtt_publish_min} {mqtt_publish_min_ids}', f'{mqtt_publish_max} {mqtt_publish_max_ids}', detections_num]]
-if TEST_NAME:
-    summaryHeaders.insert(0, 'test name')
-    summaryData[0].insert(0, TEST_NAME)
+    summaryHeaders = ['first2last_worker', 'min_max_worker_start', 'chunk_size', 'cd_min_time_ids', 'cd_max_time_ids', 'cd_avg', 'mqtt_publish_min', 'mqtt_publish_max', 'detections_num']
+    summaryData = [[round(max_worker - min_worker, 2), min_max_worker_start, chunk_size, cd_min_time_ids, cd_max_time_ids, round(cd_avg, 2), f'{mqtt_publish_min} {mqtt_publish_min_ids}', f'{mqtt_publish_max} {mqtt_publish_max_ids}', detections_num]]
+    if TEST_NAME:
+        summaryHeaders.insert(0, 'test name')
+        summaryData[0].insert(0, TEST_NAME)
 
-table = columnar(summaryData, summaryHeaders, no_borders=False)
-print(table)
-logging.info(table)
+    table = columnar(summaryData, summaryHeaders, no_borders=False)
+    print(table)
+    logging.info(table)
 
-csv_file_name = f'{CHUNK_SIZE}_{"_".join(TEST_NAME.split())}_benchmark.csv' 
+    csv_file_name = f'{chunk_size}_{"_".join(TEST_NAME.split())}_benchmark.csv'
 
-with open(csv_file_name, mode='w') as f:
-    writer = csv.writer(f)
-    
-    writer.writerow(cdHeaders)
-    writer.writerows(cdTimes)
+    with open(csv_file_name, mode='w') as f:
+        writer = csv.writer(f)
 
-    writer.writerow(runtimeHeaders)
-    writer.writerows(activationsData)
+        writer.writerow(cdHeaders)
+        writer.writerows(cdTimes)
 
-    writer.writerow(summaryHeaders)
-    writer.writerows(summaryData)
+        writer.writerow(runtimeHeaders)
+        writer.writerows(activationsData)
 
-logging.info('=================================================================\n\n')
+        writer.writerow(summaryHeaders)
+        writer.writerows(summaryData)
 
-#from tabulate import tabulate
-#print(tabulate(activationsData, runtimeHeaders))
-
-#print(f'CD headers:')
-#print(f'request_end_to_end | post_controller_time | activation_controller_time | total_invoker_time | controller_instance | invoker_instance')
-
-#print(f'{cdTimes}')
-
-#print(f'ACTIVATIONS headers:')
-#print(f'lithops_start_to_invoke | lithops_start_to_invoke_back | post_controller_time | activation_controller_time | total_invoker_time | controller_instance | invoker_instance')
-#import pdb;pdb.set_trace()
-#for atime in activations_times:
-#    print(f'{atime}')
-
-
-#print(f'total_req_time {total_req_time} post_controller_time {post_controller_time} activation_controller_time {a_controller_time} total_invoker_time {total_invoker_time}')
-#print(f'{datetime.now()} {ACTION} post done')
-#print(response.text)
+    logging.info('=================================================================\n\n')
+	
+if __name__ == '__main__':
+    benchmark()

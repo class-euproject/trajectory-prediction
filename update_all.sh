@@ -70,7 +70,7 @@ echo "Stopping running runtimes"
 docker ps -a | grep kpavel_lithops|awk '{print $1 }'| xargs -I {} docker unpause {}
 docker ps -a | grep kpavel_lithops|awk '{print $1 }'| xargs -I {} docker rm -f {}
 
-if false; then
+if true; then
     kubectl -n openwhisk delete pod owdev-invoker-0
     kubectl -n openwhisk delete pod owdev-invoker-1
     kubectl -n openwhisk delete pod owdev-invoker-2
@@ -83,12 +83,14 @@ if false; then
 fi
 
 echo -n "Update trajectory prediction OW action"
+rm classAction.zip
 zip -r classAction.zip __main__.py .lithops_config cfgfiles/ stubs/ lithopsRunner.py tp
 wsk -i action update tpAction --docker $RUNTIME_NAME --timeout 30000 -p ALIAS DKB -p CHUNK_SIZE 20 -p REDIS_HOST ${REDIS_HOST} --memory 512 classAction.zip
 
 echo -n "Update collision detection OW action"
 cd ${PROJECTS_ROOT_DIR}/collision-detection
-zip -r classAction.zip __main__.py .lithops_config cfgfiles/ stubs/ cdLithopsRunner.py cd
+rm classAction.zip
+zip -r classAction.zip __main__.py .lithops_config cfgfiles/ stubs/ cdLithopsRunner.py cd centr_cd.py dist_cd.py
 wsk -i action update cdAction --docker $RUNTIME_NAME --timeout 30000  -p ALIAS DKB -p CHUNK_SIZE 10 -p REDIS_HOST ${REDIS_HOST} --memory 512 classAction.zip
 
 wsk -i rule create cdtimerrule cdtimer /guest/cdAction
