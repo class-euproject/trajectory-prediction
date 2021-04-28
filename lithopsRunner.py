@@ -71,7 +71,7 @@ def run(params=[]):
     dm = DataclayObjectManager(alias=alias)
     timeConsumed("DataclayObjectManager")
 
-#    import pdb;pdb.set_trace()
+    import pdb;pdb.set_trace()
 
     allObjectsTuples = dm.getAllObjects()[:limit]
 #    import pdb;pdb.set_trace()

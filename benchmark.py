@@ -68,11 +68,20 @@ def findInLogs(strToSearch, lineSplitIndex, getFilenameOnly=False, optionalStrTo
                         else:
                             return line.split()[lineSplitIndex]
 
-def find_in_activation_log(log, strToSearch, lineSplitIndex, all_occurences=False):
+def find_in_activation_log(log, strToSearch, lineSplitIndex, all_occurences=False, find_after=None):
     res = []
+
+    saved_strToSearch = strToSearch
+    if find_after:
+        strToSearch = find_after
 
     for line in log:
         if strToSearch in line:
+          if find_after:
+              find_after = None
+              strToSearch = saved_strToSearch
+              continue
+
           if lineSplitIndex < 0:
             if all_occurences:
               res.append(line)
@@ -82,10 +91,17 @@ def find_in_activation_log(log, strToSearch, lineSplitIndex, all_occurences=Fals
             return line.split()[lineSplitIndex]
     return res if res else ''
 
-def getActivationLogs(aid):
+def getActivationProperty(aid, name):
     url = f'{APIHOST}/api/v1/namespaces/{NAMESPACE}/activations/{aid}'
     response = requests.get(url, auth=(user_pass[0], user_pass[1]), verify=False)
-    return response.json()['logs']
+    return response.json()[name]
+
+def getActivationLogs(aid):
+    return getActivationProperty(aid, 'logs')
+
+def getActivationEnd(aid):
+    ts = getActivationProperty(aid, 'end')
+    return datetime.fromtimestamp(ts / 1000)
 
 def toDatetime(timestamp):
     try:
@@ -99,7 +115,7 @@ def time_diff_milli(d1, d2):
     return round(abs(d1.timestamp() * 1000 - d2.timestamp() * 1000), 2)
 
 
-cdHeaders = ['cd_req_e2e', 'imports_time', 'before_dc_get_all', 'dataclay_req', 'map_to_invoke', 'map_time', 'wait', 'run_to_return', 'contr_post_e2e', 'invoker_e2e', 'controller_id', 'invoker_id', 'all_upload', 'data_upload', 'func_upload']
+cdHeaders = ['cd_req_e2e', 'imports_time', 'before_dm_instance', 'dataclay_req', 'map_to_invoke', 'map_time', 'wait', 'report_time', 'run_to_return', 'contr_post_e2e', 'invoker_e2e', 'controller_id', 'invoker_id', 'all_upload', 'data_upload', 'func_upload']
 def getCDTimes(start, end, aid):
     cdTimes = get_activation_invocation_times(aid)
     req_end_to_end = round(end.timestamp() * 1000 - start.timestamp() * 1000, 1)
@@ -130,11 +146,19 @@ def getCDTimes(start, end, aid):
     imports_time = -1
     if 'after_imports' in timestamps and 'before_imports' in timestamps:
         imports_time = time_diff_milli(timestamps['after_imports'], timestamps['before_imports'])
-    before_dc_get_all = time_diff_milli(timestamps['in_run'], timestamps['after_dm_get_all'])
+    before_dm_instance = time_diff_milli(timestamps['in_run'], timestamps['before_dm_instance'])
     dataclay_req = time_diff_milli(timestamps['before_dm_instance'], timestamps['after_dm_get_all'])
     map_to_invoke = time_diff_milli(timestamps['before_map'], timestamps['before_invoke_all'])
     map_time = time_diff_milli(timestamps['before_map'], timestamps['after_map'])
+
+    if not timestamps.get('lithops_finished'):
+        timestamps['lithops_finished'] = getActivationEnd(aid)
+
+    if not timestamps.get('returning from lithops function'):
+        timestamps['returning'] = getActivationEnd(aid)
+
     wait = time_diff_milli(timestamps['lithops_finished'], timestamps['after_map'])
+    report_time = time_diff_milli(timestamps['lithops_finished'], timestamps['returning'])
     run_to_return = time_diff_milli(timestamps['returning'], timestamps['in_run'])
 
     data_upload = time_diff_milli(timestamps['finished_uploading_data'], timestamps['start_uploading'])
@@ -142,7 +166,7 @@ def getCDTimes(start, end, aid):
     all_upload = time_diff_milli(timestamps['start_uploading'], timestamps['finished_uploading_all'])
 
 
-    data = [[req_end_to_end, imports_time, before_dc_get_all, dataclay_req, map_to_invoke, map_time, wait, run_to_return, cdTimes[0], cdTimes[1], cdTimes[2], cdTimes[3], all_upload, data_upload, func_upload]]
+    data = [[req_end_to_end, imports_time, before_dm_instance, dataclay_req, map_to_invoke, map_time, wait, report_time, run_to_return, cdTimes[0], cdTimes[1], cdTimes[2], cdTimes[3], all_upload, data_upload, func_upload]]
     return data
 
 def getLithopsRuntimesActivationIDS(aid):
@@ -176,14 +200,82 @@ def getLithopsRuntimesActivationIDS(aid):
 
 TD_FORMAT = '[%Y-%m-%dT%H:%M:%S.%fZ]'
 import re
-re.compile('(\\d+)_(\\d+):(\\d+)_(\\d+)')
 
-def get_invocation_times(aid):
+def get_tp_invocation_times(aid):
+#    import pdb;pdb.set_trace()
+    logs = getActivationLogs(aid)
+
+    times = get_activation_invocation_times(aid)
+
+    objects_num = find_in_activation_log(logs, f'objects in chunk:', 5)
+
+    g_func_data_start = find_in_activation_log(logs, f'Getting function data', 0)
+    g_func_data_finish = find_in_activation_log(logs, f'Finished getting Function data', 0)
+    if g_func_data_start:
+        g_func_data_start = toDatetime(find_in_activation_log(logs, f'Getting function data', 0).split()[0][:26])
+        g_func_data_finish = toDatetime(find_in_activation_log(logs, f'Finished getting Function data', 0).split()[0][:26])
+
+    g_func_modules_start = toDatetime(find_in_activation_log(logs, f'Getting function and modules', 0).split()[0][:26])
+    g_func_modules_finish = toDatetime(find_in_activation_log(logs, f'Getting function and modules download finished', 0).split()[0][:26])
+
+    load_all_start = toDatetime(find_in_activation_log(logs, f'Process started', 0).split()[0][:26])
+    load_all_finish = toDatetime(find_in_activation_log(logs, f'-- FUNCTION LOG ---', 0).split()[0][:26])
+
+    write_to_storage_start_1 = toDatetime(find_in_activation_log(logs, f'sending event __init__', 0).split()[0][:26])
+    write_to_storage_finish_1 = toDatetime(find_in_activation_log(logs, f'done sending event __init__', 0).split()[0][:26])
+
+    write_to_storage_start_2 = find_in_activation_log(logs, f'Storing function result - Size', 0)
+    write_to_storage_finish_2 = find_in_activation_log(logs, f'Finished storing function result', 0)
+
+    if write_to_storage_start_2:
+        write_to_storage_start_2 = toDatetime(find_in_activation_log(logs, f'Storing function result - Size', 0).split()[0][:26])
+        write_to_storage_finish_2 = toDatetime(find_in_activation_log(logs, f'Finished storing function result', 0).split()[0][:26])
+
+    write_to_storage_start_3 = find_in_activation_log(logs, f'Sending event __end__', 0)
+    if write_to_storage_start_3:
+        write_to_storage_start_3 = toDatetime(find_in_activation_log(logs, f'Sending event __end__', 0).split()[0][:26])
+        write_to_storage_finish_3 = find_in_activation_log(logs, f'done sending event __end__', 0, find_after='Sending event __end__')
+        if not write_to_storage_finish_3:
+            write_to_storage_finish_3 = find_in_activation_log(logs, f'Execution status sent to rabbitmq', 0, find_after='Sending event __end__')
+        if write_to_storage_finish_3:
+            write_to_storage_finish_3 = toDatetime(write_to_storage_finish_3.split()[0][:26])
+        else:
+            write_to_storage_finish_3 = getActivationEnd(aid)
+
+    worker_start = toDatetime(find_in_activation_log(logs, f'Starting OpenWhisk execution', 0).split()[0][:26])
+    worker_time_netto = time_diff_milli(worker_start, write_to_storage_finish_3) if write_to_storage_finish_3 else time_diff_milli(worker_start, getActivationEnd(aid))
+
+    ow_ex_start_to_process_start = time_diff_milli(worker_start, load_all_start)
+
+    g_func_data = time_diff_milli(g_func_data_start, g_func_data_finish) if g_func_data_start else 0
+    g_func_modules = time_diff_milli(g_func_modules_start, g_func_modules_finish)
+
+    load_all = time_diff_milli(load_all_start, load_all_finish)
+
+    write_to_storage_1 = time_diff_milli(write_to_storage_start_1, write_to_storage_finish_1)
+    write_to_storage_2 = time_diff_milli(write_to_storage_start_2, write_to_storage_finish_2) if write_to_storage_start_2 else 0
+    write_to_storage_3 = time_diff_milli(write_to_storage_start_3, write_to_storage_finish_3) if write_to_storage_start_3 else -1
+    if write_to_storage_3 > 10000:
+        import pdb;pdb.set_trace()
+        write_to_storage_start_3 = toDatetime(find_in_activation_log(logs, f'Sending event __end__', 0).split()[0][:26])
+        write_to_storage_finish_3 = find_in_activation_log(logs, f'done sending event __end__', 0, find_after='Sending event __end__')
+
+    func_netto = time_diff_by_labels(logs, '---------------------- FUNCTION LOG ----------------------', 'jobrunner.py -- Success function execution')
+    try:
+        after_func = time_diff_by_labels(logs, 'jobrunner.py -- Success function execution', 'handler.py -- Finished')
+    except Exception as e:
+        after_func =  toDatetime(find_in_activation_log(logs, f'jobrunner.py -- Success function execution', 0).split()[0][:26])
+        after_func = time_diff_milli(after_func, getActivationEnd(aid))
+
+    return times + (objects_num, worker_start, g_func_data, g_func_modules, load_all, write_to_storage_1, write_to_storage_2, write_to_storage_3, ow_ex_start_to_process_start, worker_time_netto, func_netto, after_func)
+
+def get_cd_invocation_times(aid):
     logs = getActivationLogs(aid)
 
     times = get_activation_invocation_times(aid)
 
     pairs_num = find_in_activation_log(logs, f'PAIRS_NUM:', 2).split(':')[1]
+    pairs_num = re.search(r"(\d+)", pairs_num).group()
 
     before_cd = find_in_activation_log(logs, f'before call collision_detection=', -1, all_occurences=True)
 
@@ -202,9 +294,6 @@ def get_invocation_times(aid):
 
         cd_time = time_diff_milli(b_ts, a_ts)
         cd_res[cd_time] = pair
-
-
-#    import pdb;pdb.set_trace()
 
     min_cd = round(min(cd_res), 2) if cd_res else float('inf')
     min_cd = f'{min_cd} {cd_res[min_cd]}' if cd_res else f'{min_cd}'
@@ -248,7 +337,7 @@ def get_invocation_times(aid):
     load_all_start = toDatetime(find_in_activation_log(logs, f'Process started', 0).split()[0][:26])
     load_all_finish = toDatetime(find_in_activation_log(logs, f'-- FUNCTION LOG ---', 0).split()[0][:26])
 
-    write_to_storage_start_1 = toDatetime(find_in_activation_log(logs, f'handler.py -- sending event __init__', 0).split()[0][:26])
+    write_to_storage_start_1 = toDatetime(find_in_activation_log(logs, f'sending event __init__', 0).split()[0][:26])
     write_to_storage_finish_1 = toDatetime(find_in_activation_log(logs, f'done sending event __init__', 0).split()[0][:26])
 
     write_to_storage_start_2 = find_in_activation_log(logs, f'Storing function result - Size', 0)
@@ -258,18 +347,29 @@ def get_invocation_times(aid):
         write_to_storage_start_2 = toDatetime(find_in_activation_log(logs, f'Storing function result - Size', 0).split()[0][:26])
         write_to_storage_finish_2 = toDatetime(find_in_activation_log(logs, f'Finished storing function result', 0).split()[0][:26])
 
-    write_to_storage_start_3 = toDatetime(find_in_activation_log(logs, f'handler.py -- sending event __end__', 0).split()[0][:26])
-    write_to_storage_finish_3 = find_in_activation_log(logs, f'done sending event __end__', 0)
-    if write_to_storage_finish_3:
-        write_to_storage_finish_3 = toDatetime(find_in_activation_log(logs, f'done sending event __end__', 0).split()[0][:26])
+    write_to_storage_start_3 = find_in_activation_log(logs, f'Sending event __end__', 0)
+    if write_to_storage_start_3:
+        write_to_storage_start_3 = toDatetime(find_in_activation_log(logs, f'Sending event __end__', 0).split()[0][:26])
+        write_to_storage_finish_3 = find_in_activation_log(logs, f'done sending event __end__', 0, find_after='Sending event __end__')
+        if not write_to_storage_finish_3:
+            write_to_storage_finish_3 = find_in_activation_log(logs, f'Execution status sent to rabbitmq', 0, find_after='Sending event __end__')
+        if write_to_storage_finish_3:
+            write_to_storage_finish_3 = toDatetime(write_to_storage_finish_3.split()[0][:26])
+        else:
+            write_to_storage_finish_3 = getActivationEnd(aid)
 
     before_cd_loop = toDatetime(find_in_activation_log(logs, f'PAIRS_NUM:', 0).split()[0][:26])
-    after_cd_loop = toDatetime(find_in_activation_log(logs, f'after for cc in cc_in_wa', 0).split()[0][:26])
+    after_cd_loop = find_in_activation_log(logs, f'after for cc in cc_in_wa', 0)
+    if after_cd_loop:
+        after_cd_loop = toDatetime(after_cd_loop.split()[0][:26])
+    else:
+        after_cd_loop = getActivationEnd(aid)
+
     cd_all = time_diff_milli(before_cd_loop, after_cd_loop)
 
 
     worker_start = toDatetime(find_in_activation_log(logs, f'Starting OpenWhisk execution', 0).split()[0][:26])
-    worker_time_netto = time_diff_milli(worker_start, write_to_storage_finish_3) if write_to_storage_finish_3 else time_diff_milli(worker_start, write_to_storage_start_3)
+    worker_time_netto = time_diff_milli(worker_start, write_to_storage_finish_3) if write_to_storage_finish_3 else time_diff_milli(worker_start, getActivationEnd(aid))
 
     ow_ex_start_to_process_start = time_diff_milli(worker_start, load_all_start)
 
@@ -280,9 +380,25 @@ def get_invocation_times(aid):
 
     write_to_storage_1 = time_diff_milli(write_to_storage_start_1, write_to_storage_finish_1)
     write_to_storage_2 = time_diff_milli(write_to_storage_start_2, write_to_storage_finish_2) if write_to_storage_start_2 else 0
-    write_to_storage_3 = time_diff_milli(write_to_storage_start_3, write_to_storage_finish_3) if write_to_storage_finish_3 else -1
+    write_to_storage_3 = time_diff_milli(write_to_storage_start_3, write_to_storage_finish_3) if write_to_storage_start_3 else -1
+    if write_to_storage_3 > 1000:
+        import pdb;pdb.set_trace()
+        write_to_storage_start_3 = toDatetime(find_in_activation_log(logs, f'Sending event __end__', 0).split()[0][:26])
+        write_to_storage_finish_3 = find_in_activation_log(logs, f'done sending event __end__', 0, find_after='Sending event __end__')
 
-    return times + (pairs_num, min_cd, max_cd, mean_cd, median_cd,  collisions_num, min_mq, max_mq,  worker_start, g_func_data, g_func_modules, load_all, write_to_storage_1, write_to_storage_2, write_to_storage_3, cd_all, ow_ex_start_to_process_start, worker_time_netto)
+    func_netto = time_diff_by_labels(logs, '---------------------- FUNCTION LOG ----------------------', 'jobrunner.py -- Success function execution') 
+    try:
+        after_func = time_diff_by_labels(logs, 'jobrunner.py -- Success function execution', 'handler.py -- Finished')
+    except Exception as e:
+        after_func =  toDatetime(find_in_activation_log(logs, f'jobrunner.py -- Success function execution', 0).split()[0][:26])
+        after_func = time_diff_milli(after_func, getActivationEnd(aid))
+
+    return times + (pairs_num, min_cd, max_cd, mean_cd, median_cd,  collisions_num, min_mq, max_mq,  worker_start, g_func_data, g_func_modules, load_all, write_to_storage_1, write_to_storage_2, write_to_storage_3, cd_all, ow_ex_start_to_process_start, worker_time_netto, func_netto, after_func)
+
+def time_diff_by_labels(logs, l1, l2):
+    before = toDatetime(find_in_activation_log(logs, l1, 0).split()[0][:26])
+    after = toDatetime(find_in_activation_log(logs, l2, 0).split()[0][:26])
+    return time_diff_milli(before, after)
 
 def get_activation_invocation_times(aid):
     tid = findInLogs(aid, 2)
@@ -306,7 +422,10 @@ def get_activation_invocation_times(aid):
       a_invoker_finish = findInLogs(f'{tid} [KubernetesContainer] running result: ok [marker:invoker_activationRun_finish', 0, optionalStrToSearch=f'{tid} [DockerContainer] running result: ok [marker:invoker_activationRun_finish')
       d_a_invoker_finish = datetime.strptime(a_invoker_finish, TD_FORMAT)
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         print(f"Exception {e} occured while processing tid: {tid}, aid: {aid}")
+        raise e
 
     post_controller_time = d_post_finish_controller.timestamp() * 1000 - d_post_controller.timestamp() * 1000
     total_invoker_time = d_a_invoker_finish.timestamp() * 1000 - d_a_invoker_start.timestamp() * 1000
@@ -314,17 +433,53 @@ def get_activation_invocation_times(aid):
     return post_controller_time, total_invoker_time, controller_instance, invoker_instance
 
 @click.command()
+@click.option('--iterations', help='Number of iterations', default=1)
 @click.option('--test_name', help='Used to generate uniqueue log files names', default='')
 @click.option('--alias', default='DKB')
 @click.option('--chunk_size', default=1, help='Size of object chunks, the actual number of chunks will be determined based on object_num / chunk_size', type=int)
+@click.option('--chunk_size_range', default=None, help='Comma separated chunk sizes, used for automatic benchmarking', type=str)
 @click.option('--limit', default='-1', help='Limits the number of objects. In case number of actual objects is lower it will duplicate objects up to specified limit', type=int)
+@click.option('--limit_range', default=None, help='Comma separated limits', type=str)
 @click.option('--ccs_limit', default=None, help='Hard limit number of connected cars', type=int)
 @click.option('--dc_distributed', help='if specified will use DC in distributed approach', is_flag=True)
-
 @click.option('--dickle', help='If specified set customized_runtime option to True', is_flag=True)
 @click.option('--rabbitmq_monitor', help='If specified set rabbitmq_monitor option to True', is_flag=True)
 @click.option('--storageless', help='If specified set storage mode to storageless', is_flag=True)
-def benchmark(test_name, alias, chunk_size, limit, ccs_limit, dc_distributed, dickle, rabbitmq_monitor, storageless):
+@click.option('--logless', help='If specified no logs can be collected', is_flag=True)
+@click.option('--operation', help='Operation type, cd or tp', default='cd')
+@click.option('--runtime', help='Lithops runtime docker image to use')
+def benchmark(iterations, test_name, alias, chunk_size, chunk_size_range, limit, limit_range, ccs_limit, dc_distributed, dickle, rabbitmq_monitor, storageless, logless, operation, runtime):
+    def iterate():
+        #warmup
+        try:
+          do_benchmark(0, test_name, alias, chunk_size, limit, ccs_limit, dc_distributed, dickle, rabbitmq_monitor, storageless, logless, operation, runtime)
+          do_benchmark(0, test_name, alias, chunk_size, limit, ccs_limit, dc_distributed, dickle, rabbitmq_monitor, storageless, logless, operation, runtime)
+        except Exception as e:
+                import traceback
+                traceback.print_exc()
+
+                # retry once
+                do_benchmark(0, test_name, alias, chunk_size, limit, ccs_limit, dc_distributed, dickle, rabbitmq_monitor, storageless, logless, operation, runtime)
+        #iterate
+        for i in range(iterations):
+            try:
+                do_benchmark(i, test_name, alias, chunk_size, limit, ccs_limit, dc_distributed, dickle, rabbitmq_monitor, storageless, logless, operation, runtime)
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+
+                # retry once
+                do_benchmark(i, test_name, alias, chunk_size, limit, ccs_limit, dc_distributed, dickle, rabbitmq_monitor, storageless, logless, operation, runtime)
+    
+    if chunk_size_range:
+        for chunk_size in chunk_size_range.split(','):
+            if limit_range:
+                for limit in limit_range.split(','):
+                    iterate()
+    else:
+        iterate()
+
+def do_benchmark(iteration, test_name, alias, chunk_size, limit, ccs_limit, dc_distributed, dickle, rabbitmq_monitor, storageless, logless, operation, runtime):
     TEST_NAME = test_name
 
     logging.info(f'\n{sep}{test_name}{sep}CHUNK_SIZE: {chunk_size} LIMIT: {limit}{sep}')
@@ -332,11 +487,17 @@ def benchmark(test_name, alias, chunk_size, limit, ccs_limit, dc_distributed, di
     #print(f'{datetime.now()} {ACTION} post')
     req_start = datetime.now()
     data={"ALIAS": alias, "CHUNK_SIZE": chunk_size, "LIMIT": limit, "CCS_LIMIT": ccs_limit,
-            'DC_DISTRIBUTED': dc_distributed, 'DICKLE': dickle, 'RABBITMQ_MONITOR': rabbitmq_monitor, 'STORAGELESS': storageless}
+            'DC_DISTRIBUTED': dc_distributed, 'DICKLE': dickle, 'RABBITMQ_MONITOR': rabbitmq_monitor, 'STORAGELESS': storageless, 'OPERATION': operation, 'RUNTIME': runtime}
             
     response = requests.post(url, params={'blocking':BLOCKING, 'result':RESULT}, json=data, auth=(user_pass[0], user_pass[1]), verify=False)
 
     req_end = datetime.now()
+
+    if logless:
+        req_end_to_end = round(req_end.timestamp() * 1000 - req_start.timestamp() * 1000, 1)
+        print(f"no log data can be collected now, the end-to-end time is: {req_end_to_end}")
+        return
+
     getLogs()
 
     aid = response.json()["activationId"]
@@ -346,19 +507,20 @@ def benchmark(test_name, alias, chunk_size, limit, ccs_limit, dc_distributed, di
     table = columnar(cdTimes, cdHeaders, no_borders=False)
     print(table)
     logging.info(table)
-
-    #cdTimes = (req_end.timestamp() * 1000 - req_start.timestamp() * 1000,) + cdTimes
-
+    
     activations = getLithopsRuntimesActivationIDS(aid)
     activationsData = []
     activations_times = []
     for activation in activations:
     #    import pdb;pdb.set_trace()
         try:
-            activation_invocation_times = get_invocation_times(activation[2])
+            if operation == 'cd':
+                activation_invocation_times = get_cd_invocation_times(activation[2])
+            else:
+                activation_invocation_times = get_tp_invocation_times(activation[2])
         except Exception as e:
-            import pdb;pdb.set_trace()
-            activation_invocation_times = get_invocation_times(activation[2])
+            #import pdb;pdb.set_trace()
+            #activation_invocation_times = get_invocation_times(activation[2])
             print(e)
 
 
@@ -370,7 +532,11 @@ def benchmark(test_name, alias, chunk_size, limit, ccs_limit, dc_distributed, di
             data.append(at)
         activationsData.append(data)
 
-    runtimeHeaders = ['start->inv', 'start->inv_back', 'post_cont_time', 'invoker_time', 'controller_id', 'invoker_id', 'pairs', 'min_cd', 'max_cd', 'mean_cd', 'med_cd', 'cd_num', 'min_mq', 'max_mq', 'worker_start', 'g_func_data', 'g_func_modules', 'load_all', 'w_to_s_1', 'w_to_s_2', 'w_to_s_3', 'cd_netto', 'ow_ex_start_to_process_start', 'worker_time_netto']
+#    import pdb;pdb.set_trace()
+    if operation == 'tp':
+        runtimeHeaders = ['start->inv', 'start->inv_back', 'post_cont_time', 'invoker_time', 'controller_id', 'invoker_id', 'objects_num', 'worker_start', 'g_func_data', 'g_func_modules', 'load_all', 'w_to_s_1', 'w_to_s_2', 'w_to_s_3', 'ow_ex_start_to_process_start', 'worker_time_netto', 'func_netto', 'after_func']
+    else:
+        runtimeHeaders = ['start->inv', 'start->inv_back', 'post_cont_time', 'invoker_time', 'controller_id', 'invoker_id', 'pairs', 'min_cd', 'max_cd', 'mean_cd', 'med_cd', 'cd_num', 'min_mq', 'max_mq', 'worker_start', 'g_func_data', 'g_func_modules', 'load_all', 'w_to_s_1', 'w_to_s_2', 'w_to_s_3', 'cd_netto', 'ow_ex_start_to_process_start', 'worker_time_netto', 'func_netto', 'after_func']
     table = columnar(activationsData, runtimeHeaders, no_borders=False)
     print(table)
     logging.info(table)
@@ -378,38 +544,39 @@ def benchmark(test_name, alias, chunk_size, limit, ccs_limit, dc_distributed, di
     def column(matrix, i):
         return [row[i] for row in matrix]
 
-    min_worker_start = min(column(activationsData, 14))
-    max_worker_start = max(column(activationsData, 14))
+    if operation == 'cd':
     #import pdb;pdb.set_trace()
-    min_max_worker_start = time_diff_milli(min_worker_start, max_worker_start)
-
-    min_worker = min(column(activationsData, 0))
-    max_worker = max(column(activationsData, 0))
-
+      min_worker_start = min(column(activationsData, 14))
+      max_worker_start = max(column(activationsData, 14))
     #import pdb;pdb.set_trace()
-    cd_min_time_ids = min(column(activationsData, 7))
-    cd_max_time_ids = max(column(activationsData, 8))
-    cd_avg = mean(column(activationsData, 9))
+      min_max_worker_start = time_diff_milli(min_worker_start, max_worker_start)
 
-    mqtt_publish_min_col = column(activationsData, 12)
-    mqtt_publish_min_arr = []
-    ids = []
-    for item in mqtt_publish_min_col:
-        item1, *item2 = str(item).split()
-        mqtt_publish_min_arr.append(item1)
-        if item2:
-            ids.append(item2[0])
-        else:
-            ids.append(None)
+      min_worker = min(column(activationsData, 0))
+      max_worker = max(column(activationsData, 0))
 
-    mqtt_publish_min = min(mqtt_publish_min_arr)
-    mqtt_publish_min_ids = ids[mqtt_publish_min_arr.index(mqtt_publish_min)]
+      cd_min_time_ids = min(column(activationsData, 7))
+      cd_max_time_ids = max(column(activationsData, 8))
+      cd_avg = mean(column(activationsData, 9))
+
+      mqtt_publish_min_col = column(activationsData, 12)
+      mqtt_publish_min_arr = []
+      ids = []
+      for item in mqtt_publish_min_col:
+          item1, *item2 = str(item).split()
+          mqtt_publish_min_arr.append(item1)
+          if item2:
+              ids.append(item2[0])
+          else:
+              ids.append(None)
+
+      mqtt_publish_min = min(mqtt_publish_min_arr)
+      mqtt_publish_min_ids = ids[mqtt_publish_min_arr.index(mqtt_publish_min)]
 
 
-    mqtt_publish_max_col = column(activationsData, 13)
-    mqtt_publish_max_arr = []
-    ids = []
-    for item in mqtt_publish_max_col:
+      mqtt_publish_max_col = column(activationsData, 13)
+      mqtt_publish_max_arr = []
+      ids = []
+      for item in mqtt_publish_max_col:
         item1, *item2 = str(item).split()
         mqtt_publish_max_arr.append(item1)
         if item2:
@@ -418,14 +585,27 @@ def benchmark(test_name, alias, chunk_size, limit, ccs_limit, dc_distributed, di
             ids.append(None)
 
     #import pdb;pdb.set_trace()
-    mqtt_publish_max = max(mqtt_publish_max_arr)
-    mqtt_publish_max_ids = ids[mqtt_publish_max_arr.index(mqtt_publish_max)]
+      mqtt_publish_max = max(mqtt_publish_max_arr)
+      mqtt_publish_max_ids = ids[mqtt_publish_max_arr.index(mqtt_publish_max)]
 
-    detections = column(activationsData, 11)
-    detections_num = sum(detections)
+      detections = column(activationsData, 11)
+      detections_num = sum(detections)
 
-    summaryHeaders = ['first2last_worker', 'min_max_worker_start', 'chunk_size', 'cd_min_time_ids', 'cd_max_time_ids', 'cd_avg', 'mqtt_publish_min', 'mqtt_publish_max', 'detections_num']
-    summaryData = [[round(max_worker - min_worker, 2), min_max_worker_start, chunk_size, cd_min_time_ids, cd_max_time_ids, round(cd_avg, 2), f'{mqtt_publish_min} {mqtt_publish_min_ids}', f'{mqtt_publish_max} {mqtt_publish_max_ids}', detections_num]]
+      summaryHeaders = ['first2last_worker', 'min_max_worker_start', 'chunk_size', 'cd_min_time_ids', 'cd_max_time_ids', 'cd_avg', 'mqtt_publish_min', 'mqtt_publish_max', 'detections_num']
+      summaryData = [[round(max_worker - min_worker, 2), min_max_worker_start, chunk_size, cd_min_time_ids, cd_max_time_ids, round(cd_avg, 2), f'{mqtt_publish_min} {mqtt_publish_min_ids}', f'{mqtt_publish_max} {mqtt_publish_max_ids}', detections_num]]
+    else:
+      min_worker_start = min(column(activationsData, 7))
+      max_worker_start = max(column(activationsData, 7))
+      #import pdb;pdb.set_trace()
+      min_max_worker_start = time_diff_milli(min_worker_start, max_worker_start)
+
+      min_worker = min(column(activationsData, 0))
+      max_worker = max(column(activationsData, 0))
+
+      summaryHeaders = ['first2last_worker', 'min_max_worker_start', 'chunk_size']
+      summaryData = [[round(max_worker - min_worker, 2), min_max_worker_start, chunk_size]]
+
+
     if TEST_NAME:
         summaryHeaders.insert(0, 'test name')
         summaryData[0].insert(0, TEST_NAME)
@@ -434,19 +614,26 @@ def benchmark(test_name, alias, chunk_size, limit, ccs_limit, dc_distributed, di
     print(table)
     logging.info(table)
 
-    csv_file_name = f'{chunk_size}_{"_".join(TEST_NAME.split())}_benchmark.csv'
+    if not os.path.exists(f"{test_name}/{chunk_size}/{limit}"):
+        os.makedirs(f"{test_name}/{chunk_size}/{limit}")
 
-    with open(csv_file_name, mode='w') as f:
+    csv_file_name = f'{iteration}_{chunk_size}_{"_".join(TEST_NAME.split())}_driver.csv'
+
+    with open(f"{test_name}/{chunk_size}/{limit}/{csv_file_name}", mode='w') as f:
         writer = csv.writer(f)
 
         writer.writerow(cdHeaders)
         writer.writerows(cdTimes)
 
-        writer.writerow(runtimeHeaders)
-        writer.writerows(activationsData)
-
         writer.writerow(summaryHeaders)
         writer.writerows(summaryData)
+
+    csv_file_name = f'{iteration}_{chunk_size}_{"_".join(TEST_NAME.split())}_worker.csv'
+    with open(f"{test_name}/{chunk_size}/{limit}/{csv_file_name}", mode='w') as f:
+        writer = csv.writer(f)
+
+        writer.writerow(runtimeHeaders)
+        writer.writerows(activationsData)
 
     logging.info('=================================================================\n\n')
 	

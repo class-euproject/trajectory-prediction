@@ -21,7 +21,7 @@ class DataclayObjectManager:
             self.KB.make_persistent(alias="DKB")
 
     def getAllObjects(self):
-        import pdb;pdb.set_trace()
+#        import pdb;pdb.set_trace()
         return self.KB.get_objects(events_length_max=QUAD_REG_LEN_DICT, events_length_min=QUAD_REG_MIN_DICT)
     
     def getObject(self, oid):

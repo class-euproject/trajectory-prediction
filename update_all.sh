@@ -85,13 +85,13 @@ fi
 echo -n "Update trajectory prediction OW action"
 rm classAction.zip
 zip -r classAction.zip __main__.py .lithops_config cfgfiles/ stubs/ lithopsRunner.py tp
-wsk -i action update tpAction --docker $RUNTIME_NAME --timeout 30000 -p ALIAS DKB -p CHUNK_SIZE 20 -p REDIS_HOST ${REDIS_HOST} --memory 512 classAction.zip
+wsk -i action update tpAction --docker $RUNTIME_NAME --timeout 60000 -p ALIAS DKB -p CHUNK_SIZE 20 -p REDIS_HOST ${REDIS_HOST} --memory 512 classAction.zip
 
 echo -n "Update collision detection OW action"
 cd ${PROJECTS_ROOT_DIR}/collision-detection
 rm classAction.zip
-zip -r classAction.zip __main__.py .lithops_config cfgfiles/ stubs/ cdLithopsRunner.py cd centr_cd.py dist_cd.py
-wsk -i action update cdAction --docker $RUNTIME_NAME --timeout 30000  -p ALIAS DKB -p CHUNK_SIZE 10 -p REDIS_HOST ${REDIS_HOST} --memory 512 classAction.zip
+zip -r classAction.zip __main__.py .lithops_config cfgfiles/ stubs/ cdLithopsRunner.py cd tp map_tp.py centr_cd.py dist_cd.py
+wsk -i action update cdAction --docker $RUNTIME_NAME --timeout 60000  -p ALIAS DKB -p CHUNK_SIZE 10 -p REDIS_HOST ${REDIS_HOST} --memory 512 classAction.zip
 
 wsk -i rule create cdtimerrule cdtimer /guest/cdAction
 wsk -i rule create tp-rule tp-trigger tpAction
