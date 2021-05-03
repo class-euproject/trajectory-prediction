@@ -1,7 +1,8 @@
 #!/bin/bash
 
 REDIS_HOST=`kubectl -n openwhisk get svc|grep redis|awk '{print $3}'`
-RUNTIME_NAME=192.168.7.41:5000/kpavel/lithops_runtime:13.0
+NODES="41 43 44 45"
+RUNTIME_NAME=192.168.7.40:5000/kpavel/lithops_runtime:14.0
 PROJECTS_ROOT_DIR="${HOME}"
 source ${PROJECTS_ROOT_DIR}/venv/bin/activate
 #RUNTIME_NAME=kpavel/lithops_runtime:13.0
@@ -55,13 +56,13 @@ cd ${PROJECTS_ROOT_DIR}/lithops
 docker build -t $RUNTIME_NAME .
 docker push $RUNTIME_NAME
 
-echo "Forcing docker image update in the cluster"
-cd ${PROJECTS_ROOT_DIR}/trajectory-prediction
-kubectl apply -f udeployment.yaml
-kubectl rollout status deployment/upd-dep
-
-echo "Deleting deployment"
-kubectl delete deploy upd-dep
+#echo "Forcing docker image update in the cluster"
+#cd ${PROJECTS_ROOT_DIR}/trajectory-prediction
+#kubectl apply -f udeployment.yaml
+#kubectl rollout status deployment/upd-dep
+#
+#echo "Deleting deployment"
+#kubectl delete deploy upd-dep
 
 echo "Creating lithops runtime"
 lithops runtime create $RUNTIME_NAME --memory 512
@@ -82,16 +83,37 @@ if true; then
     sleep 30
 fi
 
-echo -n "Update trajectory prediction OW action"
-rm classAction.zip
-zip -r classAction.zip __main__.py .lithops_config cfgfiles/ stubs/ lithopsRunner.py tp
-wsk -i action update tpAction --docker $RUNTIME_NAME --timeout 60000 -p ALIAS DKB -p CHUNK_SIZE 20 -p REDIS_HOST ${REDIS_HOST} --memory 512 classAction.zip
+echo -n "Updating runtimes"
+tp_runtime=`lithops runtime extend $RUNTIME_NAME --filepath /home/class/collision-detection/map_tp.py --function traj_pred_v2_wrapper --exclude_modules CityNS 2>&1 | grep "Extended runtime:" | awk -F'Extended runtime: ' '{print $2}'`
+echo TP_RUNTIME=${tp_runtime}
+
+cd_runtime=`lithops runtime extend $RUNTIME_NAME --filepath /home/class/collision-detection/centr_cd.py --function detect_collision_centralized 2>&1 | grep "Extended runtime:" | awk -F'Extended runtime: ' '{print $2}'`
+echo CD_RUNTIME=${cd_runtime}
+
+echo "Refreshing runtimes docker images in the cluster"
+for node in $NODES; do
+   ssh $node docker pull $tp_runtime
+   ssh $node docker pull $cd_runtime
+   ssh $node docker pull $RUNTIME_NAME
+done
+
+#echo -n "Update trajectory prediction OW action"
+#rm classAction.zip
+#zip -r classAction.zip __main__.py .lithops_config cfgfiles/ stubs/ lithopsRunner.py tp
+#
+#wsk -i action update tpAction --docker $RUNTIME_NAME --timeout 300000 -p ALIAS DKB -p CHUNK_SIZE 3 -p REDIS_HOST ${REDIS_HOST} --memory 512 -p OPERATION tp -p RUNTIME ${tp_runtime} classAction.zip
 
 echo -n "Update collision detection OW action"
 cd ${PROJECTS_ROOT_DIR}/collision-detection
 rm classAction.zip
-zip -r classAction.zip __main__.py .lithops_config cfgfiles/ stubs/ cdLithopsRunner.py cd tp map_tp.py centr_cd.py dist_cd.py
-wsk -i action update cdAction --docker $RUNTIME_NAME --timeout 60000  -p ALIAS DKB -p CHUNK_SIZE 10 -p REDIS_HOST ${REDIS_HOST} --memory 512 classAction.zip
+zip -r classAction.zip __main__.py .lithops_config cfgfiles/ stubs/ lithops_runner.py cd tp map_tp.py centr_cd.py dist_cd.py
+wsk -i action update cdAction --docker $RUNTIME_NAME --timeout 300000  -p ALIAS DKB -p CHUNK_SIZE 3 -p REDIS_HOST ${REDIS_HOST} --memory 512 -p OPERATION cd -p RUNTIME ${cd_runtime} classAction.zip
+wsk -i action update tpAction --docker $RUNTIME_NAME --timeout 300000  -p ALIAS DKB -p CHUNK_SIZE 3 -p REDIS_HOST ${REDIS_HOST} --memory 512 -p OPERATION tp -p RUNTIME ${tp_runtime} classAction.zip
 
 wsk -i rule create cdtimerrule cdtimer /guest/cdAction
 wsk -i rule create tp-rule tp-trigger tpAction
+
+echo '\n=================================================================================='
+echo TP_RUNTIME=${tp_runtime}
+echo CD_RUNTIME=${cd_runtime}
+echo '=================================================================================='
