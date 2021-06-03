@@ -55,47 +55,10 @@ QUAD_REG_MIN_DICT = {
     "rider":20,
     "train":10
 }
+GEO_MOD =  [10.9258325726001146449562, 0.0000012929374284312734, 0.0000000000000000000000, 44.6595471971102497832362, 0.0000000000000000000000, -0.0000008796952010381291]
+GEO_OWEN = [-78.9316336640000031366071, 0.0000010000000000000000, 0.0000000000000000000000, 35.0315191749999996773113, 0.0000000000000000000000, -0.0000010000000000000000]
 
-QUAD_REG_OFFSET = 5 # how many points to predict
-PRED_RANGE_MIL = 1000 # range for predicted points in milliseconds 
-PRECISION = 9
-REGRESSION_DEGREES = 2 # number of degrees of the polynomials to use in the regression process (linear: 1, quadratic: 2, etc.)
-REGRESSION_METHOD = "numpy" # type of method to use to compute reggression. Valid are: "numpy" or "sklearn"
-
-class Vehicle:
-
-    _dqx = None #deque() Currently there no need to instantiate queue as it is passed in constructor
-    _dqy = None #deque()
-    _dqt = None #deque()
-    
-    def __init__(self, dqx, dqy, dqt):
-        self._dqx = dqx
-        self._dqy = dqy
-        self._dqt = dqt
-        
-
-# def generate_transformation_da(ProjMat_file,GeoTransform_file):
-        
-#     with open(ProjMat_file) as f:
-#         rows_pj = [line.split() for line in f]
-#     ProjMat = np.array(rows_pj, dtype = 'float32')
-#     InvProjMat = np.linalg.inv(ProjMat)
-            
-#     with open(GeoTransform_file) as f:
-#         rows_gt = [line.split() for line in f]
-#     adfGeoTransform = np.array(rows_gt[0], dtype = 'float32')
-        
-#     return ProjMat, InvProjMat, adfGeoTransform
-
-def traj_pred_v3(dqx, dqy, dqt, w, h,source_id,
-                 reg_offset=QUAD_REG_OFFSET,
-                 range_mil=PRED_RANGE_MIL
-                 ):
-    threshold_mov=0.5
-    reg_method = 'numpy'
-    reg_deg = 1
-
-    imat_dict = {'20939': np.array( [[ 1.0312843e+00 , 1.9871530e-01, -7.8963071e+03], \
+IMAT_DICT = {'20939': np.array( [[ 1.0312843e+00 , 1.9871530e-01, -7.8963071e+03], \
                                     [-7.3551707e-02,  7.9373951e-04,  5.6017670e+02], \
                                     [-8.3895675e-06, -2.2179075e-04,  1.1082504e+00]]),
                  '2405': np.array(  [[ 1.4855428e-01, -3.1246930e-01,  1.1134888e+02], \
@@ -142,33 +105,47 @@ def traj_pred_v3(dqx, dqy, dqt, w, h,source_id,
                                     [-1.6709240e-04,  1.6546916e-04,  3.8814998e-01]])        
 
                 }
-    InvProjMat = imat_dict[source_id]
+
+
+QUAD_REG_OFFSET = 5 # how many points to predict
+PRED_RANGE_MIL = 1000 # range for predicted points in milliseconds 
+PRECISION = 9
+REGRESSION_DEGREES = 2 # number of degrees of the polynomials to use in the regression process (linear: 1, quadratic: 2, etc.)
+REGRESSION_METHOD = "numpy" # type of method to use to compute reggression. Valid are: "numpy" or "sklearn"
+
+class Vehicle:
+
+    _dqx = None #deque() Currently there no need to instantiate queue as it is passed in constructor
+    _dqy = None #deque()
+    _dqt = None #deque()
+    
+    def __init__(self, dqx, dqy, dqt):
+        self._dqx = dqx
+        self._dqy = dqy
+        self._dqt = dqt
+        
+
+def traj_pred_v3(dqx, dqy, dqt, w, h,source_id,
+                 reg_offset=QUAD_REG_OFFSET,
+                 range_mil=PRED_RANGE_MIL
+                 ):
+    threshold_mov=0.5
+    reg_method = 'numpy'
+    reg_deg = 1
+    static = False
+    
+    try:
+        InvProjMat = IMAT_DICT[source_id] 
+    except (KeyError):
+        source_id = '0'
+    
+    #InvProjMat = IMAT_DICT[source_id]
+     
     #print(InvProjMat)
     if (source_id == '2405'):
-        adfGeoTransform = np.array([-78.9316336640000031366071, 0.0000010000000000000000, 0.0000000000000000000000, 35.0315191749999996773113, 0.0000000000000000000000, -0.0000010000000000000000])
+        adfGeoTransform = np.array(GEO_OWEN)
     else:
-        adfGeoTransform = np.array([10.9258325726001146449562, 0.0000012929374284312734, 0.0000000000000000000000, 44.6595471971102497832362, 0.0000000000000000000000, -0.0000008796952010381291])
-    #print(adfGeoTransform)
-    
-    # GeoTransform_file =  'mat/modena_geotrans.txt'
-    # ProjMat_file = 'mat/pmat_' + source_id + '.txt'
-    # imat_path = 'mat/imat_' + source_id + '.txt'
-
-    # if not (os.path.isfile(imat_path)):
-    #     ProjMat, InvProjMat, adfGeoTransform = generate_transformation_da(ProjMat_file, GeoTransform_file)
-    #     print('---------- SAVING IMAT ----------------')
-    #     print(InvProjMat)
-    #     print(adfGeoTransform)
-    #     np.savetxt(imat_path,InvProjMat)
-    
-    # InvProjMat = np.loadtxt(imat_path)
-    # adfGeoTransform = np.loadtxt(GeoTransform_file)
-    # print(InvProjMat)
-    # print(adfGeoTransform)
-
-
-    #assert reg_method == "numpy" or reg_method == "sklearn", "only numpy or sklearn are valid regression methods"
-    #assert reg_deg > 0, "regression degrees must be greater than 0"
+        adfGeoTransform = np.array(GEO_MOD)
     
     #
     # 1. find fx
@@ -206,7 +183,8 @@ def traj_pred_v3(dqx, dqy, dqt, w, h,source_id,
         ft.append(vct_t[-1] + i*range_mil)    
     
     # check if static object based on boxes sizes
-    static = is_object_static (dqx[-1],dqy[-1],w,h,threshold_mov,dqx,dqy,InvProjMat, adfGeoTransform)
+    if (source_id != '0'):
+        static = is_object_static (dqx[-1],dqy[-1],w,h,threshold_mov,dqx,dqy,InvProjMat, adfGeoTransform)
     
     # if all 'x' and 'y' values are the same, the object is stopped
     # return same value for predictions
