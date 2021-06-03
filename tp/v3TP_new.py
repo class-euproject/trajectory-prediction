@@ -74,6 +74,18 @@ class Vehicle:
         self._dqt = dqt
         
 
+def generate_transformation_da(ProjMat_file,GeoTransform_file):
+        
+    with open(ProjMat_file) as f:
+        rows_pj = [line.split() for line in f]
+    ProjMat = np.array(rows_pj, dtype = 'float32')
+    InvProjMat = np.linalg.inv(ProjMat)
+            
+    with open(GeoTransform_file) as f:
+        rows_gt = [line.split() for line in f]
+    adfGeoTransform = np.array(rows_gt[0], dtype = 'float32')
+        
+    return ProjMat, InvProjMat, adfGeoTransform
 
 def traj_pred_v3(dqx, dqy, dqt, w, h,source_id,
                  reg_offset=QUAD_REG_OFFSET,
@@ -83,23 +95,39 @@ def traj_pred_v3(dqx, dqy, dqt, w, h,source_id,
     reg_method = 'numpy'
     reg_deg = 1
 
-    
-
-    GeoTransform_file =  'mat/modena_geotrans.txt'
-    ProjMat_file = 'mat/pmat_' + source_id + '.txt'
-    imat_path = 'mat/imat_' + source_id + '.txt'
-
-    if not (os.path.isfile(imat_path)):
-        ProjMat, InvProjMat, adfGeoTransform = generate_transformation_da(ProjMat_file, GeoTransform_file)
-        # print('---------- SAVING IMAT ----------------')
-        # print(InvProjMat)
-        # print(adfGeoTransform)
-        np.savetxt(imat_path,InvProjMat)
-    
-    InvProjMat = np.loadtxt(imat_path)
-    adfGeoTransform = np.loadtxt(GeoTransform_file)
+    imat_dict = {'20939': np.array([[ 1.0312843e+00 , 1.9871530e-01, -7.8963071e+03], \
+                                  [-7.3551707e-02,  7.9373951e-04,  5.6017670e+02], \
+                                  [-8.3895675e-06, -2.2179075e-04,  1.1082504e+00]]),
+                 '2405': np.array( [[ 1.4855428e-01, -3.1246930e-01,  1.1134888e+02], \
+                                 [ 2.0982297e-02, -3.2458495e-02,  2.0829369e+01], \
+                                 [-1.6552572e-04, -2.7494816e-04,  6.0363925e-01]]),
+                 '6310': np.array( [[-1.54636717e+00,  7.14792788e-01,  1.25561670e+03], \
+                                    [ 8.74898359e-02,  4.24867012e-02, -4.21209442e+02], \
+                                    [-2.08847559e-04,  1.16362213e-03, -3.33626246e+00]])
+                }
+    InvProjMat = imat_dict[source_id]
     #print(InvProjMat)
+    if (source_id == '2405'):
+        adfGeoTransform = np.array([-78.9316336640000031366071, 0.0000010000000000000000, 0.0000000000000000000000, 35.0315191749999996773113, 0.0000000000000000000000, -0.0000010000000000000000])
+    else:
+        adfGeoTransform = np.array([10.9258325726001146449562, 0.0000012929374284312734, 0.0000000000000000000000, 44.6595471971102497832362, 0.0000000000000000000000, -0.0000008796952010381291])
     #print(adfGeoTransform)
+    
+    # GeoTransform_file =  'mat/modena_geotrans.txt'
+    # ProjMat_file = 'mat/pmat_' + source_id + '.txt'
+    # imat_path = 'mat/imat_' + source_id + '.txt'
+
+    # if not (os.path.isfile(imat_path)):
+    #     ProjMat, InvProjMat, adfGeoTransform = generate_transformation_da(ProjMat_file, GeoTransform_file)
+    #     print('---------- SAVING IMAT ----------------')
+    #     print(InvProjMat)
+    #     print(adfGeoTransform)
+    #     np.savetxt(imat_path,InvProjMat)
+    
+    # InvProjMat = np.loadtxt(imat_path)
+    # adfGeoTransform = np.loadtxt(GeoTransform_file)
+    # print(InvProjMat)
+    # print(adfGeoTransform)
 
 
     #assert reg_method == "numpy" or reg_method == "sklearn", "only numpy or sklearn are valid regression methods"
