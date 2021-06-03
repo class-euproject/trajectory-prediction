@@ -107,10 +107,10 @@ IMAT_DICT = {'20939': np.array( [[ 1.0312843e+00 , 1.9871530e-01, -7.8963071e+03
                 }
 
 
-QUAD_REG_OFFSET = 5 # how many points to predict
-PRED_RANGE_MIL = 1000 # range for predicted points in milliseconds 
+QUAD_REG_OFFSET = 8 # how many points to predict
+PRED_RANGE_MIL = 500 # range for predicted points in milliseconds 
 PRECISION = 9
-REGRESSION_DEGREES = 2 # number of degrees of the polynomials to use in the regression process (linear: 1, quadratic: 2, etc.)
+REGRESSION_DEGREES = 1 # number of degrees of the polynomials to use in the regression process (linear: 1, quadratic: 2, etc.)
 REGRESSION_METHOD = "numpy" # type of method to use to compute reggression. Valid are: "numpy" or "sklearn"
 
 class Vehicle:
