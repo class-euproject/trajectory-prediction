@@ -74,18 +74,18 @@ class Vehicle:
         self._dqt = dqt
         
 
-def generate_transformation_da(ProjMat_file,GeoTransform_file):
+# def generate_transformation_da(ProjMat_file,GeoTransform_file):
         
-    with open(ProjMat_file) as f:
-        rows_pj = [line.split() for line in f]
-    ProjMat = np.array(rows_pj, dtype = 'float32')
-    InvProjMat = np.linalg.inv(ProjMat)
+#     with open(ProjMat_file) as f:
+#         rows_pj = [line.split() for line in f]
+#     ProjMat = np.array(rows_pj, dtype = 'float32')
+#     InvProjMat = np.linalg.inv(ProjMat)
             
-    with open(GeoTransform_file) as f:
-        rows_gt = [line.split() for line in f]
-    adfGeoTransform = np.array(rows_gt[0], dtype = 'float32')
+#     with open(GeoTransform_file) as f:
+#         rows_gt = [line.split() for line in f]
+#     adfGeoTransform = np.array(rows_gt[0], dtype = 'float32')
         
-    return ProjMat, InvProjMat, adfGeoTransform
+#     return ProjMat, InvProjMat, adfGeoTransform
 
 def traj_pred_v3(dqx, dqy, dqt, w, h,source_id,
                  reg_offset=QUAD_REG_OFFSET,
