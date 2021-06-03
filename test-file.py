@@ -112,11 +112,10 @@ def main():
                 #print("Frame: "+str(frame)+" TP input:", dqx, dqy, dqt)
                 #print("HERE: " +str(frame))
             #fx, fy, ft = traj_pred_v3(dqx, dqy, dqt,w,h,InvProjMat,adfGeoTransform,reg_offset,range_mil,threshold_mov)
-            fx, fy, ft = traj_pred_v3(dqx, dqy, dqt, w, h, 
-                                      reg_offset, range_mil,
-                                      reg_degree,'numpy', 
-                                      InvProjMat, adfGeoTransform,
-                                      threshold_mov)
+            
+            workflow_log_number = workflow_log.split('.')[0]
+            fx, fy, ft = traj_pred_v3(dqx, dqy, dqt, w, h, workflow_log_number,
+                                      reg_offset, range_mil)
 
             dm.storeResult(frame, v_id, v_type, fx, fy, ft)
             

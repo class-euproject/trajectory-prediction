@@ -73,17 +73,49 @@ class Vehicle:
         self._dqy = dqy
         self._dqt = dqt
         
+def generate_transformation_da(ProjMat_file,GeoTransform_file):
+        
+    with open(ProjMat_file) as f:
+        rows_pj = [line.split() for line in f]
+    ProjMat = np.array(rows_pj, dtype = 'float32')
+    InvProjMat = np.linalg.inv(ProjMat)
+            
+    with open(GeoTransform_file) as f:
+        rows_gt = [line.split() for line in f]
+    adfGeoTransform = np.array(rows_gt[0], dtype = 'float32')
+        
+    return ProjMat, InvProjMat, adfGeoTransform
 
-def traj_pred_v3(dqx, dqy, dqt, w, h,
+
+def traj_pred_v3(dqx, dqy, dqt, w, h,source_id,
                  reg_offset=QUAD_REG_OFFSET,
-                 range_mil=PRED_RANGE_MIL,
-                 reg_deg=REGRESSION_DEGREES,
-                 reg_method=REGRESSION_METHOD,
-                 InvProjMat=None, adfGeoTransform=None, # projection matrix and geotransform
-                 threshold_mov=0.5):
+                 range_mil=PRED_RANGE_MIL
+                 ):
+    threshold_mov=0.5
+    reg_method = 'numpy'
+    reg_deg = 1
+
     
-    assert reg_method == "numpy" or reg_method == "sklearn", "only numpy or sklearn are valid regression methods"
-    assert reg_deg > 0, "regression degrees must be greater than 0"
+
+    GeoTransform_file =  'mat/modena_geotrans.txt'
+    ProjMat_file = 'mat/pmat_' + source_id + '.txt'
+    imat_path = 'mat/imat_' + source_id + '.txt'
+
+    if not (os.path.isfile(imat_path)):
+        ProjMat, InvProjMat, adfGeoTransform = generate_transformation_da(ProjMat_file, GeoTransform_file)
+        # print('---------- SAVING IMAT ----------------')
+        # print(InvProjMat)
+        # print(adfGeoTransform)
+        np.savetxt(imat_path,InvProjMat)
+    
+    InvProjMat = np.loadtxt(imat_path)
+    adfGeoTransform = np.loadtxt(GeoTransform_file)
+    #print(InvProjMat)
+    #print(adfGeoTransform)
+
+
+    #assert reg_method == "numpy" or reg_method == "sklearn", "only numpy or sklearn are valid regression methods"
+    #assert reg_deg > 0, "regression degrees must be greater than 0"
     
     #
     # 1. find fx
@@ -131,11 +163,13 @@ def traj_pred_v3(dqx, dqy, dqt, w, h,
 
     # if not, calculate x' and y'
     else:
+        # if (source_id == '' | source_id == '' | source_id == '' |):
+        # reg_deg = 2
         # 1a. calculate x'
-        if reg_method == "numpy":
-            fx = numpy_poly_reg(vct_x, vct_y, vct_xp, reg_deg)
-        elif reg_method == "sklearn":
-            fx = sklearn_poly_reg(vct_x, vct_y, vct_xp, reg_deg)
+        #if reg_method == "numpy":
+        fx = numpy_poly_reg(vct_x, vct_y, vct_xp, reg_deg)
+        #elif reg_method == "sklearn":
+        #    fx = sklearn_poly_reg(vct_x, vct_y, vct_xp, reg_deg)
         
     
         # need to check R2 (rename it to RSquared) and if it's reasonable...
@@ -150,10 +184,10 @@ def traj_pred_v3(dqx, dqy, dqt, w, h,
         # vct_x (timestamps) and vct_xp (predicted timestamps) are the same
     
         # calculate y'
-        if reg_method == "numpy":
-            fy = numpy_poly_reg(vct_x, vct_y, vct_xp, reg_deg)
-        elif reg_method == "sklearn":
-            fy = sklearn_poly_reg(vct_x, vct_y, vct_xp, reg_deg)
+        #if reg_method == "numpy":
+        fy = numpy_poly_reg(vct_x, vct_y, vct_xp, reg_deg)
+        #elif reg_method == "sklearn":
+        #    fy = sklearn_poly_reg(vct_x, vct_y, vct_xp, reg_deg)
     
     # now the output is 3 arrays for timestamps, x and y positions
     return fx, fy, ft
