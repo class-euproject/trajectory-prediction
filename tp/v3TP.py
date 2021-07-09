@@ -113,8 +113,8 @@ def traj_pred_v3(dqx, dqy, dqt,
     # if all 'x' and 'y' values are the same, the object is stopped
     # return same value for predictions
     if (all(dqx_elem == dqx[0] for dqx_elem in dqx)) and (all(dqy_elem == dqy[0] for dqy_elem in dqy)):
-        fx = [dqx[-1]] * reg_offset
-        fy = [dqy[-1]] * reg_offset
+        fx = [0] * reg_offset
+        fy = [0] * reg_offset
     
     # if not, calculate x' and y'
     else:
