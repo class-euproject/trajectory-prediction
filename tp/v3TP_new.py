@@ -41,7 +41,11 @@ QUAD_REG_LEN_DICT = {
     "motor":40,
     "bike":40,
     "rider":50,
-    "train":40
+    "train":40,
+    "20": 40,
+    "30": 40,
+    "31": 40,
+    "40": 40
 }
 
 # min amount of trajectory points to start predicting per class
@@ -53,7 +57,11 @@ QUAD_REG_MIN_DICT = {
     "motor":10,
     "bike":10,
     "rider":20,
-    "train":10
+    "train":10,
+    "20": 10,
+    "30": 10,
+    "31": 10,
+    "40": 10
 }
 GEO_MOD =  [10.9258325726001146449562, 0.0000012929374284312734, 0.0000000000000000000000, 44.6595471971102497832362, 0.0000000000000000000000, -0.0000008796952010381291]
 GEO_OWEN = [-78.9316336640000031366071, 0.0000010000000000000000, 0.0000000000000000000000, 35.0315191749999996773113, 0.0000000000000000000000, -0.0000010000000000000000]
@@ -61,9 +69,6 @@ GEO_OWEN = [-78.9316336640000031366071, 0.0000010000000000000000, 0.000000000000
 IMAT_DICT = {    '20939': np.array( [[ 1.45749138e+00,  2.44709370e-01, -1.06858373e+04], \
                                     [-1.33375960e-02,  1.13059362e-02,  8.14541543e+01], \
                                     [ 2.07442836e-04, -2.04975701e-04, -2.31749577e-010]]),
-                # '20939': np.array( [[ 1.0312843e+00 , 1.9871530e-01, -7.8963071e+03], \
-                #                     [-7.3551707e-02,  7.9373951e-04,  5.6017670e+02], \
-                #                     [-8.3895675e-06, -2.2179075e-04,  1.1082504e+00]]),
                  '2405': np.array(  [[ 1.4855428e-01, -3.1246930e-01,  1.1134888e+02], \
                                     [ 2.0982297e-02, -3.2458495e-02,  2.0829369e+01], \
                                     [-1.6552572e-04, -2.7494816e-04,  6.0363925e-01]]),
@@ -135,7 +140,6 @@ def traj_pred_v3(dqx, dqy, dqt, w, h,source_id,
                  reg_offset=QUAD_REG_OFFSET,
                  range_mil=PRED_RANGE_MIL
                  ):
-    threshold_mov=0.5
     reg_method = 'numpy'
     reg_deg = 1
     static = False
@@ -146,13 +150,20 @@ def traj_pred_v3(dqx, dqy, dqt, w, h,source_id,
         source_id = '0'
     
     #InvProjMat = IMAT_DICT[source_id]
-     
+
     #print(InvProjMat)
     if (source_id == '2405'):
         adfGeoTransform = np.array(GEO_OWEN)
     else:
         adfGeoTransform = np.array(GEO_MOD)
     
+
+    if (source_id == '20939'):
+        threshold_mov=0.1
+    else:
+        threshold_mov=0.5
+
+
     #
     # 1. find fx
     #
@@ -191,7 +202,7 @@ def traj_pred_v3(dqx, dqy, dqt, w, h,source_id,
     # check if static object based on boxes sizes
     if (source_id != '0'):
         static = is_object_static (dqx[-1],dqy[-1],w,h,threshold_mov,dqx,dqy,InvProjMat, adfGeoTransform)
-    
+
     # if all 'x' and 'y' values are the same, the object is stopped
     # return same value for predictions
     if ((all(dqx_elem == dqx[0] for dqx_elem in dqx)) and (all(dqy_elem == dqy[0] for dqy_elem in dqy)) or static):
@@ -227,6 +238,13 @@ def traj_pred_v3(dqx, dqy, dqt, w, h,source_id,
         #    fy = sklearn_poly_reg(vct_x, vct_y, vct_xp, reg_deg)
     
     # now the output is 3 arrays for timestamps, x and y positions
+
+    temp_fx = np.array(fx)
+    fx = temp_fx.tolist()
+
+    temp_fy = np.array(fy)
+    fy = temp_fy.tolist()
+
     return fx, fy, ft
 
 def numpy_poly_reg(vx, vy, z, degrees):
@@ -397,3 +415,4 @@ def is_object_static (traj_x, traj_y,w,h,thr_box,dqx,dqy,InvProjMat, adfGeoTrans
     # print(" ")
                 
     return ((x1<=pixel_maxlat[0]<=x2) and (x1<=pixel_maxlon[0]<=x2) and (x1<=pixel_minlat[0]<=x2) and (x1<=pixel_minlon[0]<=x2) and (y1<=pixel_maxlat[1]<=y2) and (y1<=pixel_maxlon[1]<=y2) and (y1<=pixel_minlat[1]<=y2) and (y1<=pixel_minlon[1]<=y2))
+    
